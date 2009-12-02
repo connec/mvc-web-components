@@ -13,7 +13,6 @@ foreach(scandir('../..') as $file) {
 include_once '../../Database/database.php';
 include_once '../../Database/mysqli_driver.php';
 include_once '../../Model/model.php';
-use MVCWebComponents\Database\Database, MVCWebComponents\Model\Model, MVCWebComponents\UnitTest;
 
 set_exception_handler(array('T', 'handleException'));
 

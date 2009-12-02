@@ -1,13 +1,13 @@
 <?php
 
-include '../test_base.php';
-use MVCWebComponents\Model\Model;
+include 'common.php';
+use MVCWebComponents\Model\Model as Model, MVCWebComponents\UnitTest as UnitTest;
 
 function is_multiple_of_five($test) {
 	return ($test % 5 == 0);
 }
 
-Class User extends Model {
+class User extends Model {
 	
 	protected $validate = array(
 		'id' => array('unique', 'numeric'),
@@ -20,32 +20,62 @@ Class User extends Model {
 	
 }
 
-echo '<pre>';
+class ValidationTest extends UnitTest {
+	
+	public function preTesting() {
+		
+		return $this->user = User::getInstance();
+		
+	}
+	
+	// Test failing the minlength condition, and test ignoring it.
+	public function TestIgnoreAndFailMinLength() {
+		
+		$user =(object)array(
+			'name' => 'Jimminy Billybob',
+			'password' => '1');
+		
+		$this->assertEqual($this->user->validate($user), array('password' => array('minlength' => 6)));
+		$this->assertTrue($this->user->validate($user, array('all' => array('minlength'))));
+		
+	}
+	
+	// Test failing the unique and required conditions
+	public function TestFailUniqueAndRequire() {
+		
+		$user = (object)array(
+			'name' => 'Bob');
+		
+		$this->assertEqual($this->user->validate($user), array('name' => array('unique' => 'unique'), 'password' => array('required' => 'required')));
+		
+	}
+	
+	// Test passing maxlength, unique, required, minlength and dateformat
+	public function TestPassMaxLenMinLenUniqueRequiredDateFormat() {
+		
+		$user = (object)array(
+			'name' => 'Hello World',
+			'password' => 'Password',
+			'date' => date('Y-m-d H:i:s'));
+		
+		$this->assertTrue($this->user->validate($user));
+		
+	}
+	
+	// Test passing callback
+	public function TestPassingCallback() {
+		
+		$user = (object)array(
+			'name' => 'Not Taken',
+			'password' => 'Passwizzle',
+			'five' => 10);
+		
+		$this->assertTrue($this->user->validate($user));
+		
+	}
+	
+}
 
-$model = User::getInstance();
-
-$user = new StdClass;
-$user->name = 'Jimminy Billybob';
-$user->password = '1';
-T::assertEqual($model->validate($user), array('password' => array('minlength' => 6)));
-T::assertStrict($model->validate($user, array('all' => array('minlength'))), true);
-
-$user = new StdClass;
-$user->name = 'Bob';
-T::assertEqual($model->validate($user), array('name' => array('unique' => 'unique'), 'password' => array('required' => 'required')));
-
-$user = new StdClass;
-$user->name = 'Hello World';
-$user->password = 'Password';
-$user->date = date('Y-m-d H:i:s');
-T::assertStrict($model->validate($user), true);
-
-$user = new StdClass;
-$user->name = 'Bobfosheezy';
-$user->password = 'Password';
-$user->five = 10;
-T::assertStrict($model->validate($user), true);
-
-echo '</pre>';
+new ValidationTest;
 
 ?>

@@ -1,7 +1,6 @@
 <?php
 
 use MVCWebComponents\Database\Database;
-use MVCWebComponents\Model\Model;
 
 error_reporting(E_ALL);
 

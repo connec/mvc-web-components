@@ -1,26 +1,35 @@
 <?php
 
-include '../test_base.php';
-use MVCWebComponents\Model\Model;
+include 'common.php';
+use MVCWebComponents\Model\Model as Model, MVCWebComponents\UnitTest as UnitTest;
 
-Class User extends Model {}
+class User extends Model {}
 
-echo '<pre>';
+class UpdateTest extends UnitTest {
+	
+	public function preTesting() {
+		
+		return $this->user = User::getInstance();
+		
+	}
+	
+	public function TestUpdate() {
+		
+		$original = $this->user->findFirst();
+		
+		$new = clone $original;
+		$new->name = 'LORLNAME';
+		
+		$this->assertTrue($this->user->save($new));
+		$this->assertEqual($new, $this->user->findFirst(array('cascade' => false)));
+		
+		$this->assertTrue($this->user->save($original));
+		$this->assertEqual($original, $this->user->findFirst(array('cascade' => false)));
+		
+	}
+	
+}
 
-$model = User::getInstance();
-
-$original = $model->find(array('conditions' => array('id' => 1), 'type' => 'first'));
-$new = clone $original;
-$new->password = 'bobsnewpass';
-
-T::assertStrict($model->update($new), true);
-
-T::assertEqual($new, $model->find(array('conditions' => array('id' => 1), 'type' => 'first')));
-
-T::assertStrict($model->update($original), true);
-
-T::assertEqual($original, $model->find(array('conditions' => array('id' => 1), 'type' => 'first')));
-
-echo '</pre>';
+new UpdateTest;
 
 ?>
