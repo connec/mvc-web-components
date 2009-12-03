@@ -35,15 +35,7 @@ abstract class UnitTest {
 	public $dependencies = array();
 	
 	/**
-	 * A flag telling if a test is unfinished (an unfinished test will fail).
-	 * 
-	 * @var bool
-	 * @since 1.2
-	 */
-	public $unfinished = false;
-	
-	/**
-	 * Converting a test to a string should return its name.
+	 * Converting a test to a string should return its name (sans namespace).
 	 * 
 	 * @return string The name of the test.
 	 * @since 1.2
@@ -62,18 +54,25 @@ abstract class UnitTest {
 	 */
 	public function run() {
 		
-		if($this->unfinished) throw new MVCException("$this failed.  Test unfinished.");
-		if(!$this->preTesting()) throw new MVCException(get_class($this) . ' error: Setup failed.');
+		self::$currentTest = 'preTesting';
+		if(!$this->preTesting()) throw new MVCException("$this error: Setup failed.");
+		
 		echo '<ul>';
 		foreach(get_class_methods($this) as $method) {
 			if(stripos($method, 'test') !== 0) continue;
-			if(!$this->preTest()) throw new MVCException(get_class($this) . " error: Setup failed for test '$method'.");
-			self::$currentTest = "$this::$method";
+			
+			self::$currentTest = "preTest ($method)";
+			if(!$this->preTest()) throw new MVCException("$this error: Setup failed for test '$method'.");
+			
+			self::$currentTest = $method;
 			$this->$method();
 			echo "<li>$method <span style=\"color: #090;\">passed</span>.</li>";
-			if(!$this->postTest()) throw new MVCException(get_class($this) . " error: Cleanup failed for test '$method'.");
+			
+			self::$currentTest = "postTest ($method)";
+			if(!$this->postTest()) throw new MVCException("$this error: Cleanup failed for test '$method'.");
 		}
-		if(!$this->postTesting()) throw new MVCException(get_class($this) . ' error: Cleanup failed.', 1);
+		self::$currentTest = 'postTesting';
+		if(!$this->postTesting()) throw new MVCException("$this error: Cleanup failed.");
 		
 		echo '</ul>';
 		return true;
@@ -111,6 +110,7 @@ abstract class UnitTest {
 		
 		// Go through the array(s), load the file and execute the test.
 		while(array_diff($tests, $ranTests) != array()) {
+			$oldRanTests = $ranTests;
 			foreach($testFiles as $i => $file) {
 				if(array_diff($tests[$i]->dependencies, $ranTests) != array()) continue;
 				
@@ -120,6 +120,9 @@ abstract class UnitTest {
 				$ranTests[] =& $tests[$i];
 				unset($testFiles[$i]);
 			}
+			
+			// Check if we're infinite looping.
+			if($ranTests == $oldRanTests) throw new MVCException("Bad dependency configuration in tests.  No valid dependency tree (possibly missing test).");
 		}
 		
 	}
@@ -253,9 +256,9 @@ abstract class UnitTest {
 	 */
 	public static function getPrintable($value) {
 		
-		if(is_bool($value)) return $value ? 'true' : 'false';
-		elseif(is_array($value) or is_object($value)) return print_r($value, true);
-		else return strval($value);
+		ob_start();
+		var_dump($value);
+		return '<div style="padding: 10px;border: 1px solid #666;background-color: #eee">' . ob_get_clean() . '</div>';
 		
 	}
 	
@@ -279,19 +282,20 @@ class TestFailedException extends MVCException{
 	 */
 	public function __construct($type, $value1, $value2 = '') {
 		
+		echo '<li>' . UnitTest::$currentTest . ' <span style="color: red">failed</span>.</li></ul>';
 		$this->message = UnitTest::$currentTest . ' failed: ' . Inflector::variablize("assert_$type") . ' - ';
 		switch($type) {
 			case 'strict':
-				$this->message .= UnitTest::getPrintable($value1) . ' not strictly equal ' . UnitTest::getPrintable($value2);
+				$this->message .= UnitTest::getPrintable($value1) . ' <b>not strictly equal</b> ' . UnitTest::getPrintable($value2);
 				break;
 			case 'equal':
-				$this->message .= UnitTest::getPrintable($value1) . ' not equal ' . UnitTest::getPrintable($value2);
+				$this->message .= UnitTest::getPrintable($value1) . ' <b>not equal</b> ' . UnitTest::getPrintable($value2);
 				break;
 			case 'true':
-				$this->message .= UnitTest::getPrintable($value1) . ' not strictly true.';
+				$this->message .= UnitTest::getPrintable($value1) . ' <b>not strictly true</b>.';
 				break;
 			case 'false':
-				$this->message .= UnitTest::getPrintable($value1) . ' not strictly false.';
+				$this->message .= UnitTest::getPrintable($value1) . ' <b>not strictly false</b>.';
 				break;
 		}
 		

@@ -285,6 +285,16 @@ abstract class Model {
 				if(isset($relation['model'])) $model = $relation['model'];
 				else $relation['model'] = $model;
 				
+				// Deal with namespacing
+				if(!class_exists($relation['model'])) {
+					// Try prefixing the namespace of the current model.
+					$namespace = str_replace(static::p()->name, '', get_called_class());
+					$relation['model'] = "$namespace$model";
+					
+					// Run a method with that class, if it doesn't exist the user will have to sort it out.
+					$relation['model']::getName();
+				}
+				
 				$key = Inflector::underscore(static::properties()->name) . '_' . static::getPrimaryKey();
 				if($relationType == 'belongsTo') $key = Inflector::underscore($alias) . '_' . $relation['model']::getPrimaryKey();
 				if(isset($relation['foreignKey'])) $key = $relation['foreignKey'];
@@ -402,7 +412,7 @@ abstract class Model {
 		else $return = Database::getAll($options['return']);
 		
 		// Relate the result if in the options.
-		if($options['cascade']) $this->findRelated($return, $options['processed']);
+		if($options['cascade']) static::findRelated($return, $options['processed']);
 		
 		// Return it.
 		return $return;
@@ -469,26 +479,24 @@ abstract class Model {
 	 * @since 0.3
 	 * @throws BadArgumentException Thrown when $result is not an object or array.
 	 */
-	protected function findRelated(&$result, $processed) {
+	protected static function findRelated(&$result, $processed) {
 		
-		if(empty($result) or (empty($this->hasOne) and empty($this->hasMany) and empty($this->belongsTo))) return;
-		if(is_array($result) and isset($result[0])) foreach($result as &$_result) $this->findRelated($_result, $processed);
+		if(empty($result) or (empty(static::p()->hasOne) and empty(static::p()->hasMany) and empty(static::p()->belongsTo))) return;
+		if(is_array($result) and isset($result[0])) foreach($result as &$_result) static::findRelated($_result, $processed);
 		elseif(is_object($result)) {
-			foreach(array('hasOne' => $this->hasOne, 'hasMany' => $this->hasMany, 'belongsTo' => $this->belongsTo) as $relationType => $relations) {
+			foreach(array('hasOne' => static::p()->hasOne, 'hasMany' => static::p()->hasMany, 'belongsTo' => static::p()->belongsTo) as $relationType => $relations) {
 				foreach($relations as $alias => $relation) {
-					$model =& $relation['model'];
-					
 					// Prevent infinite looping, don't relate this model if it's already been related in this cascading find operation.
-					if(in_array($model->getName(), $processed)) continue;
-					else $relation['options']['processed'][] = $this->getName();
+					if(in_array($relation['model'], $processed)) continue;
+					else $relation['options']['processed'][] = $relation['model'];
 					
 					if(!isset($relation['options']['conditions'])) $relation['options']['conditions'] = array();
-					if($relationType == 'belongsTo') $relation['options']['conditions'][$model->getPrimaryKey()] = $result->{$relation['foreignKey']};
-					else $relation['options']['conditions'][$relation['foreignKey']] = $result->{$this->getPrimaryKey()};
+					if($relationType == 'belongsTo') $relation['options']['conditions'][$relation['model']::getPrimaryKey()] = $result->{$relation['foreignKey']};
+					else $relation['options']['conditions'][$relation['foreignKey']] = $result->{static::getPrimaryKey()};
 					
 					if($relationType == 'hasMany') $alias = Inflector::pluralize($alias);
 					
-					$result->{$alias} = $model->find($relation['options']);
+					$result->{$alias} = $relation['model']::find($relation['options']);
 				}
 			}
 		}else throw new BadArgumentException('Model::findRelated() expects parameter 1 to be object or array, \'' . gettype($result) . '\' given.');
@@ -503,21 +511,21 @@ abstract class Model {
 	 * @since 0.1
 	 * @throws BadArgumentException Thrown when $data is not an object.
 	 */
-	public function insert(&$data) {
+	public static function insert(&$data) {
 		
 		if(!is_object($data)) throw new BadArgumentException("Model::insert() requires an object as input.");
 		
 		$fields = array();
 		$values = array();
 		foreach($data as $field => $value) {
-			if(!in_array($field, $this->getFields())) continue;
+			if(!in_array($field, static::getFields())) continue;
 			$fields[] = "`$field`";
 			$values[] = "'" . Database::escape($value) . "'";
 		}
 		
-		$query = 'insert into `' . $this->getTableName() . "` (" . implode(', ', $fields) . ') values (' . implode(', ', $values) . ')';
+		$query = 'insert into `' . static::getTableName() . "` (" . implode(', ', $fields) . ') values (' . implode(', ', $values) . ')';
 		if(Database::query($query)) {
-			if(Database::getInsertId()) $data->{$this->getPrimaryKey()} = Database::getInsertId();
+			if(Database::getInsertId()) $data->{static::getPrimaryKey()} = Database::getInsertId();
 			return true;
 		}else return false;
 		

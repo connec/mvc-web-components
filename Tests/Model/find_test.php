@@ -20,10 +20,9 @@ class FindTest extends UnitTest {
 	// This test assumes InitTest passes.
 	public $dependencies = array('InitTest');
 	
-	// Test the defaults (except cascading... that's for another test)
 	public function TestDefaults() {
 		
-		$this->assertEqual(User::find(array('cascade' => false)), array(
+		$this->assertEqual(User::find(), array(
 			(object)array(
 				'id' => 1,
 				'name' => 'Bob',

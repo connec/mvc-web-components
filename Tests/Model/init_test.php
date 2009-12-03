@@ -5,15 +5,17 @@ use MVCWebComponents\Model\Model, MVCWebComponents\Model\Table, MVCWebComponents
 
 class User extends Model {
 	
-	protected static $hasOne = array('Post', 'Signature');
-	protected static $hasMany = array('Post', 'SomethingElse');
+	protected static $hasOne = array('Post', 'User');
+	protected static $hasMany = array('Post', 'User');
 	protected static $belongsTo = array(
 		'Parent' => array(
-			'model' => '\\InitTest\\User'
+			'model' => 'User'
 		)
 	);
 	
 }
+
+class Post extends Model{}
 
 class InitTest extends UnitTest {
 	
@@ -35,27 +37,27 @@ class InitTest extends UnitTest {
 		$user = User::dump(false); // Get the info via dump()
 		$this->assertEqual($user->hasOne, array(
 			'Post' => array(
-				'model' => 'Post',
+				'model' => 'InitTest\\Post',
 				'foreignKey' => 'user_id',
 				'options' => array('type' => 'first', 'limit' => 1)),
-			'Signature' => array(
-				'model' => 'Signature',
+			'User' => array(
+				'model' => 'InitTest\\User',
 				'foreignKey' => 'user_id',
 				'options' => array('type' => 'first', 'limit' => 1))
 		));
 		$this->assertEqual($user->hasMany, array(
 			'Post' => array(
-				'model' => 'Post',
+				'model' => 'InitTest\\Post',
 				'foreignKey' => 'user_id',
 				'options' => array()),
-			'SomethingElse' => array(
-				'model' => 'SomethingElse',
+			'User' => array(
+				'model' => 'InitTest\\User',
 				'foreignKey' => 'user_id',
 				'options' => array())
 		));
 		$this->assertEqual($user->belongsTo, array(
 			'Parent' => array(
-				'model' => '\\InitTest\\User',
+				'model' => 'InitTest\\User',
 				'foreignKey' => 'parent_id',
 				'options' => array('type' => 'first', 'limit' => 1))
 		));
