@@ -7,7 +7,7 @@
  * @author Chris Connelly
  */
 namespace MVCWebComponents\Model;
-use MVCWebComponents\MVCException, MVCWebComponents\Inflector, MVCWebComponents\Database\Database;
+use MVCWebComponents\MVCException, MVCWebComponents\BadArgumentException, MVCWebComponents\Inflector, MVCWebComponents\Database\Database;
 
 /**
  * The Model class is an extensible class to allow 'zero configuration' CRUD + extras database interaction.
@@ -543,19 +543,19 @@ abstract class Model {
 	 * @since 0.1
 	 * @throws BadArgumentException Thrown when $data is not an object or does not contain a value for the primary key.
 	 */
-	public function update($data) {
+	public static function update($data) {
 		
 		if(!is_object($data)) throw new BadArgumentException("Model::update() requires an object as input.");
-		if(!isset($data->{$this->getPrimaryKey()})) throw new BadArgumentException("Model::update() requires the supplied data to include the primary key of the item to update.");
+		if(!isset($data->{static::getPrimaryKey()})) throw new BadArgumentException("Model::update() requires the supplied data to include the primary key of the item to update.");
 		
-		$primaryKey = $data->{$this->getPrimaryKey()};
+		$primaryKey = $data->{static::getPrimaryKey()};
 		$updates = array();
 		foreach($data as $field => $value) {
-			if(!in_array($field, $this->getFields()) or $field == $this->getPrimaryKey()) continue;
+			if(!in_array($field, static::getFields()) or $field == static::getPrimaryKey()) continue;
 			$updates[] = "`$field` = '" . Database::escape($value) . "'";
 		}
 		
-		$query = 'update `' . $this->getTableName() . '` set ' . implode(', ', $updates) . ' where `' . $this->getPrimaryKey() . "` = '$primaryKey' limit 1";
+		$query = 'update `' . static::getTableName() . '` set ' . implode(', ', $updates) . ' where `' . static::getPrimaryKey() . "` = '$primaryKey' limit 1";
 		return Database::query($query);
 		
 	}

@@ -114,7 +114,7 @@ abstract class UnitTest {
 			foreach($testFiles as $i => $file) {
 				if(array_diff($tests[$i]->dependencies, $ranTests) != array()) continue;
 				
-				echo '<h1>' . $tests[$i] . '</h1>';
+				echo '<h2>' . $tests[$i] . '</h2>';
 				$tests[$i]->run();
 				
 				$ranTests[] =& $tests[$i];
