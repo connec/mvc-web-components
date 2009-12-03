@@ -18,22 +18,7 @@ class UpdateTest extends UnitTest {
 			'title' => 'Post 1 Title',
 			'content' => 'Post 1 Content',
 			'time' => time());
-		$this->post2 = (object)array(
-			'category_id' => 1,
-			'author_id' => 2,
-			'title' => 'Post 2 Title',
-			'content' => 'Post 2 Content',
-			'time' => time());
-		$this->post3 = (object)array(
-			'category_id' => 1,
-			'author_id' => 1,
-			'title' => 'Post 3 Title',
-			'content' => 'Post 3 Content',
-			'time' => time());
-		
 		$this->assertTrue(Post::insert($this->post1));
-		$this->assertTrue(Post::insert($this->post2));
-		$this->assertTrue(Post::insert($this->post3));
 		
 		return true;
 		

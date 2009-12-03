@@ -47,7 +47,7 @@ abstract class UnitTest {
 	}
 	
 	/**
-	 * Performs the testing.
+	 * Performs this test.
 	 * 
 	 * @return void
 	 * @since 1.0
