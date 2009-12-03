@@ -102,7 +102,9 @@ abstract class UnitTest {
 			$class = "\\$name\\$name";
 			
 			if(!class_exists($class)) throw new MVCException("Missing test '$class', please ensure all tests are the camelised version of the file name, and in a namespace equal to the test name.");
-			return new $class;
+			$return = new $class;
+			if(!($return instanceof UnitTest)) throw new MVCException("Unit tests must be extended from the UnitTest class.");
+			return $return;
 		}, $testFiles);
 		
 		// Maintain an array of completed tests.

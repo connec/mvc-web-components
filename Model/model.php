@@ -575,7 +575,7 @@ abstract class Model {
 	 * @since 0.1
 	 * @throws BadArgumentException Thrown when $data is not an object or $options is not an array.
 	 */
-	public function save(&$data, $options = array()) {
+	public static function save(&$data, $options = array()) {
 		
 		if(!is_object($data)) throw new BadArgumentException("Model::save() expects parameter 1 to be an object, '" . gettype($data) . "' given.");
 		if(!is_array($options)) throw new BadArgumentException("Model::save() expected parameter 2 to be an array, '" . gettype($options) . "' given.");
@@ -584,37 +584,38 @@ abstract class Model {
 		$return = array();
 		
 		if($options['cascade']) {
-			foreach($this->belongsTo as $alias => $relation) {
+			foreach(static::p()->belongsTo as $alias => $relation) {
 				if(!isset($data->{$alias})) continue;
-				$return[] = $relation['model']->save($data->{$alias}, $options);
-				$data->{$relation['foreignKey']} = $data->{$alias}->{$relation['model']->getPrimaryKey()};
+				$return[] = $relation['model']::save($data->{$alias}, $options);
+				$data->{$relation['foreignKey']} = $data->{$alias}->{$relation['model']::getPrimaryKey()};
 			}
 		}
 		
-		if(!isset($data->{$this->getPrimaryKey()})) $function = 'insert';
-		elseif(!$this->{'findFirstBy' . Inflector::camelize($this->getPrimaryKey())}($data->{$this->getPrimaryKey()})) $function = 'insert';
+		$idFunction = 'findFirstBy' . Inflector::camelize(static::getPrimaryKey());
+		if(!isset($data->{static::getPrimaryKey()})) $function = 'insert';
+		elseif(!static::$idFunction($data->{static::getPrimaryKey()})) $function = 'insert';
 		else $function = 'update';
-		if($options['validate']) if($this->validate($data) !== true) return false;
-		$return[] = $this->$function($data);
+		
+		if($options['validate']) if(static::validate($data) !== true) return false;
+		$return[] = static::$function($data);
 		
 		if($options['cascade']) {
-			foreach($this->hasMany as $alias => $relation) {
+			foreach(static::p()->hasMany as $alias => $relation) {
 				$alias = Inflector::pluralize($alias);
 				if(!isset($data->{$alias})) continue;
 				foreach($data->{$alias} as &$_data) {
-					$_data->{$relation['foreignKey']} = $data->{$this->getPrimaryKey()};
-					$return[] = $relation['model']->save($_data, $options);
+					$_data->{$relation['foreignKey']} = $data->{static::getPrimaryKey()};
+					$return[] = $relation['model']::save($_data, $options);
 				}
 			}
-			foreach($this->hasOne as $alias => $relation) {
+			foreach(static::p()->hasOne as $alias => $relation) {
 				if(!isset($data->{$alias})) continue;
-				$data->{$alias}->{$relation['foreignKey']} = $data->{$this->getPrimaryKey()};
-				$return[] = $relation['model']->save($data->{$alias}, $options);
+				$data->{$alias}->{$relation['foreignKey']} = $data->{static::getPrimaryKey()};
+				$return[] = $relation['model']::save($data->{$alias}, $options);
 			}
 		}
 		
-		foreach($return as $bool) if(!$bool) return false;
-		return true;
+		return array_reduce($return, function($a,$b){return $a and $b;}, true);
 		
 	}
 	
@@ -653,7 +654,7 @@ abstract class Model {
 		if(!is_object($data)) throw new BadArgumentException("Model::validate() expects parameter 1 to be an object, " . gettype($data) . ' given.');
 		if(!is_array($ignore)) throw new BadArgumentException("Model::validate() expects parameter 2 to be an array, '" . gettype($ignore) . "' given.");
 		
-		if(empty($this->validate)) return true;
+		if(empty(static::p()->validate)) return true;
 		
 		$errors = array();
 		foreach($this->validate as $field => $rules) {
