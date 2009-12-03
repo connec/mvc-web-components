@@ -5,7 +5,7 @@ use MVCWebComponents\Model\Model, MVCWebComponents\Database\Database, MVCWebComp
 
 class User extends Model {
 	
-	protected static $hasMany = array('Post' => array('foreignKey' => 'author_id', 'model' => '\\RelationshipFindTest\\Post'));
+	protected static $hasMany = array('Post' => array('foreignKey' => 'author_id', 'model' => 'Post'));
 	
 }
 
@@ -13,7 +13,7 @@ class Post extends Model {
 	
 	protected static $belongsTo = array(
 		'Author' => array(
-			'model' => '\\RelationshipFindTest\\User'
+			'model' => 'User'
 		)
 	);
 	
@@ -26,36 +26,39 @@ class RelationshipFindTest extends UnitTest {
 	public function preTesting() {
 		
 		// Put some posts in...
-		$post1 = (object)array(
+		$this->post1 = (object)array(
 			'category_id' => 1,
 			'author_id' => 1,
 			'title' => 'Post 1 Title',
 			'content' => 'Post 1 Content',
 			'time' => time());
-		$post2 = (object)array(
+		$this->post2 = (object)array(
 			'category_id' => 1,
 			'author_id' => 2,
 			'title' => 'Post 2 Title',
 			'content' => 'Post 2 Content',
 			'time' => time());
-		$post3 = (object)array(
+		$this->post3 = (object)array(
 			'category_id' => 1,
 			'author_id' => 1,
 			'title' => 'Post 3 Title',
 			'content' => 'Post 3 Content',
 			'time' => time());
 		
-		$this->assertTrue(Post::insert($post1));
-		$this->assertTrue(Post::insert($post2));
-		$this->assertTrue(Post::insert($post3));
+		$this->assertTrue(Post::insert($this->post1));
+		$this->assertTrue(Post::insert($this->post2));
+		$this->assertTrue(Post::insert($this->post3));
 		
 		return true;
 		
 	}
 	
-	public function TestFind() {
+	public function TestHasMany() {
 		
-		var_dump(User::findAll());
+		// Find the users and check the posts are correct.
+		$this->assertEqual($user = User::findAll(array('orderBy' => 'id desc')), true);
+		$this->assertEqual($user[0]->Posts, array($this->post2));
+		$this->assertEqual($user[1]->Posts, array($this->post1, $this->post3));
 		
 	}
 	

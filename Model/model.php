@@ -488,7 +488,9 @@ abstract class Model {
 				foreach($relations as $alias => $relation) {
 					// Prevent infinite looping, don't relate this model if it's already been related in this cascading find operation.
 					if(in_array($relation['model'], $processed)) continue;
-					else $relation['options']['processed'][] = $relation['model'];
+					
+					$processed[] = $relation['model'];
+					$relation['options']['processed'] = $processed;
 					
 					if(!isset($relation['options']['conditions'])) $relation['options']['conditions'] = array();
 					if($relationType == 'belongsTo') $relation['options']['conditions'][$relation['model']::getPrimaryKey()] = $result->{$relation['foreignKey']};

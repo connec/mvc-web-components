@@ -122,7 +122,7 @@ abstract class UnitTest {
 			}
 			
 			// Check if we're infinite looping.
-			if($ranTests == $oldRanTests) throw new MVCException("Bad dependency configuration in tests.  No valid dependency tree (possibly missing test).");
+			if($ranTests == $oldRanTests) throw new MVCException("Bad dependency configuration in tests.  No valid dependency tree (possibly missing test).  Unable to run tests " . implode(', ', array_diff($tests, $ranTests)) . '.');
 		}
 		
 	}
