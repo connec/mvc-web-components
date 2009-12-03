@@ -14,7 +14,7 @@ set_exception_handler(array('MVCWebComponents\UnitTest', 'handleException'));
 /**
  * The UnitTest class provides useful functionality for implementing unit tests.
  * 
- * @version 1.1
+ * @version 1.2
  */
 abstract class UnitTest {
 	
@@ -27,26 +27,100 @@ abstract class UnitTest {
 	public static $currentTest;
 	
 	/**
+	 * Stores an array of any tests this test is dependent on.
+	 * 
+	 * @var array
+	 * @since 1.2
+	 */
+	public $dependencies = array();
+	
+	/**
+	 * A flag telling if a test is unfinished (an unfinished test will fail).
+	 * 
+	 * @var bool
+	 * @since 1.2
+	 */
+	public $unfinished = false;
+	
+	/**
+	 * Converting a test to a string should return its name.
+	 * 
+	 * @return string The name of the test.
+	 * @since 1.2
+	 */
+	public function __toString() {
+		
+		return @end(explode('\\', get_class($this)));
+		
+	}
+	
+	/**
 	 * Performs the testing.
 	 * 
 	 * @return void
 	 * @since 1.0
 	 */
-	public function __construct() {
+	public function run() {
 		
+		if($this->unfinished) throw new MVCException("$this failed.  Test unfinished.");
 		if(!$this->preTesting()) throw new MVCException(get_class($this) . ' error: Setup failed.');
+		echo '<ul>';
 		foreach(get_class_methods($this) as $method) {
 			if(stripos($method, 'test') !== 0) continue;
 			if(!$this->preTest()) throw new MVCException(get_class($this) . " error: Setup failed for test '$method'.");
-			self::$currentTest = get_class($this) . '::' . $method;
+			self::$currentTest = "$this::$method";
 			$this->$method();
-			echo "$method passed.<br />";
+			echo "<li>$method <span style=\"color: #090;\">passed</span>.</li>";
 			if(!$this->postTest()) throw new MVCException(get_class($this) . " error: Cleanup failed for test '$method'.");
 		}
 		if(!$this->postTesting()) throw new MVCException(get_class($this) . ' error: Cleanup failed.', 1);
 		
-		echo '<p>All Tests Passed</p>';
+		echo '</ul>';
 		return true;
+		
+	}
+	
+	/**
+	 * Scans the current directory for '*_test.php' files and runs the unit test within its namespace.
+	 * 
+	 * @return void
+	 * @since 1.2
+	 */
+	public static function runTests() {
+		
+		// Scan the current directory for a list of test files...
+		$testFiles = array_filter(scandir('.'), function($file) {
+			if(substr($file, -9) == '_test.php' and is_file($file)) return true;
+			else return false;
+		});
+		sort($testFiles); // Reset the indexing.
+		
+		// Create an array of test names from that...
+		$tests = array_map(function($file) {
+			require_once $file;
+			
+			$name = Inflector::camelize(substr($file,0,-4));
+			$class = "\\$name\\$name";
+			
+			if(!class_exists($class)) throw new MVCException("Missing test '$class', please ensure all tests are the camelised version of the file name, and in a namespace equal to the test name.");
+			return new $class;
+		}, $testFiles);
+		
+		// Maintain an array of completed tests.
+		$ranTests = array();
+		
+		// Go through the array(s), load the file and execute the test.
+		while(array_diff($tests, $ranTests) != array()) {
+			foreach($testFiles as $i => $file) {
+				if(array_diff($tests[$i]->dependencies, $ranTests) != array()) continue;
+				
+				echo '<h1>' . $tests[$i] . '</h1>';
+				$tests[$i]->run();
+				
+				$ranTests[] =& $tests[$i];
+				unset($testFiles[$i]);
+			}
+		}
 		
 	}
 	
