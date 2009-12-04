@@ -7,7 +7,7 @@
  * @author Chris Connelly
  */
 namespace MVCWebComponents\Model;
-use MVCWebComponents\MVCException, MVCWebComponents\BadArgumentException, MVCWebComponents\Inflector, MVCWebComponents\Database\Database;
+use MVCWebComponents\MVCException, MVCWebComponents\BadArgumentException, MVCWebComponents\Inflector, MVCWebComponents\Database\Database, MVCWebComponents\ExtensibleStatic;
 
 /**
  * The Model class is an extensible class to allow 'zero configuration' CRUD + extras database interaction.
@@ -33,15 +33,7 @@ use MVCWebComponents\MVCException, MVCWebComponents\BadArgumentException, MVCWeb
  * 
  * @version 0.8
  */
-abstract class Model {
-	
-	/**
-	 * An array of Model data, due to PHP's inability to dynamically create static properties.
-	 * 
-	 * @var array
-	 * @since 0.8
-	 */
-	protected static $models = array();
+abstract class Model extends ExtensibleStatic {
 	
 	/**
 	 * Table name to use.
@@ -129,30 +121,6 @@ abstract class Model {
 	 * @see $hasOne, $hasMany, find()
 	 */
 	protected static $belongsTo = array();
-	
-	/**
-	 * Returns the StdClass metadata for this model.
-	 * 
-	 * @return StdClass
-	 * @since 0.8
-	 */
-	protected static function &properties() {
-		
-		return self::$models[get_called_class()];
-		
-	}
-	
-	/**
-	 * Shorthand alias for {@link properties()}.
-	 * 
-	 * @return StdClass
-	 * @since 0.8
-	 */
-	protected static function &p() {
-		
-		return static::properties();
-		
-	}
 	
 	/**
 	 * Returns the (fully qualified) name of the model (class).
@@ -250,7 +218,7 @@ abstract class Model {
 	 */
 	public static function __init() {
 		
-		if(!isset(self::$models[get_called_class()])) self::$models[get_called_class()] = new \StdClass;
+		if(!isset(static::$states[get_called_class()])) static::$states[get_called_class()] = new \StdClass;
 		else return;
 		
 		// Store the model name (sans namespace) in the metadata.
