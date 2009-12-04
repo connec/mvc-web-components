@@ -1,23 +1,19 @@
 <?php
 
-include 'common.php';
-use MVCWebComponents\Database\Database, MVCWebComponents\Model\Model, MVCWebComponents\UnitTest;
+namespace RelationshipFindTest;
+use MVCWebComponents\Model\Model, MVCWebComponents\Database\Database, MVCWebComponents\UnitTest\UnitTest;
 
 class User extends Model {
 	
-	protected $hasMany = array(
-		'Post' => array(
-			'foreignKey' => 'author_id'
-		)
-	);
+	protected static $hasMany = array('Post' => array('foreignKey' => 'author_id'));
 	
 }
 
 class Post extends Model {
 	
-	protected $belongsTo = array(
+	protected static $belongsTo = array(
 		'Author' => array(
-			'model' => 'User',
+			'model' => 'User'
 		)
 	);
 	
@@ -25,12 +21,13 @@ class Post extends Model {
 
 class User2 extends Model {
 	
-	protected $tableName = 'users';
+	protected static $tableName = 'users';
 	
-	protected $hasOne = array(
-		'Post2' => array(
+	protected static $hasOne = array(
+		'Post' => array(
 			'model' => 'Post2',
-			'foreignKey' => 'author_id'
+			'foreignKey' => 'author_id',
+			'options' => array('orderBy' => 'id desc')
 		)
 	);
 	
@@ -38,108 +35,77 @@ class User2 extends Model {
 
 class Post2 extends Model {
 	
-	protected $tableName = 'posts';
+	protected static $tableName = 'posts';
 	
-	protected $belongsTo = array(
-		'Author2' => array(
-			'model' => 'User2',
-			'foreignKey' => 'author_id'
-		)
-	);
+	protected static $belongsTo = array('Author' => array('model' => 'User2'));
 	
 }
 
 class RelationshipFindTest extends UnitTest {
 	
-	# Create and save some posts.
+	public $dependencies = array('FindTest', 'CallStaticTest', 'InitTest', 'InsertTest');
+	
 	public function preTesting() {
 		
-		$return = array();
-		$return[] = $this->userModel = User::getInstance();
-		$return[] = $this->postModel = Post::getInstance();
-		$return[] = $this->user2Model = User2::getInstance();
-		$return[] = $this->post2Model = Post2::getInstance();
+		// Put some posts in...
+		$this->post1 = (object)array(
+			'category_id' => 1,
+			'author_id' => 1,
+			'title' => 'Post 1 Title',
+			'content' => 'Post 1 Content',
+			'time' => time());
+		$this->post2 = (object)array(
+			'category_id' => 1,
+			'author_id' => 2,
+			'title' => 'Post 2 Title',
+			'content' => 'Post 2 Content',
+			'time' => time());
+		$this->post3 = (object)array(
+			'category_id' => 1,
+			'author_id' => 1,
+			'title' => 'Post 3 Title',
+			'content' => 'Post 3 Content',
+			'time' => time());
 		
-		$post1 = new StdClass;
-		$post1->category_id = 1;
-		$post1->author_id = 1;
-		$post1->title = 'Post 1';
-		$post1->content = 'Post 1 Content';
-		$post1->time = time();
+		$this->assertTrue(Post::insert($this->post1));
+		$this->assertTrue(Post::insert($this->post2));
+		$this->assertTrue(Post::insert($this->post3));
 		
-		$post2 = new StdClass;
-		$post2->category_id = 1;
-		$post2->author_id = 1;
-		$post2->title = 'Post 2';
-		$post2->content = 'Post 2 Content';
-		$post2->time = time();
-		
-		$post3 = new StdClass;
-		$post3->category_id = 1;
-		$post3->author_id = 2;
-		$post3->title = 'Post 3';
-		$post3->content = 'Post 3 Content';
-		$post3->time = time();
-
-		$return[] = $this->postModel->save($post1);
-		$return[] = $this->postModel->save($post2);
-		$return[] = $this->postModel->save($post3);
-		
-		return $return[0] and $return[1] and $return [2] and $return[3] and $return[4] and $return[5] and $return [6];
+		return true;
 		
 	}
 	
-	# Test hasMany relations.
 	public function TestHasMany() {
 		
-		# Assert the user with name 'Bob' is found.
-		$this->assertEqual($bob = $this->userModel->findFirstByName('Bob'), true);
-		
-		# Assert $bob has 2 posts.
-		$this->assertEqual(count($bob->Posts), 2);
-		
-		# Assert the first post in $bob is Bob's first post in the DB
-		$this->assertEqual($bob->Posts[0], $this->postModel->findFirstByAuthorId($bob->id, array('cascade' => false)));
+		// Find the users and check the posts are correct.
+		$this->assertEqual($users = User::findAll(array('orderBy' => 'id desc')), true);
+		$this->assertEqual($users[0]->Posts, array($this->post2));
+		$this->assertEqual($users[1]->Posts, array($this->post1, $this->post3));
 		
 	}
 	
-	# Test hasOne relations.
 	public function TestHasOne() {
 		
-		# Assert the user with name 'Bob' is found.
-		$this->assertEqual($bob = $this->user2Model->findFirstByName('Bob'), true);
-		
-		# Assert $bob->Post is a StdClass.
-		$this->assertTrue($bob->Post2 instanceof StdClass);
-		
-		# Finally, assert the post is the first one attached to Bob.
-		$this->assertEqual($bob->Post2, $this->post2Model->findFirstByAuthorId($bob->id, array('cascade' => false)));
+		// Use our alternative 'User2' to test hasOne.
+		$this->assertEqual($users = User2::findAll(), true);
+		$this->assertEqual($users[0]->Post, $this->post3);
+		$this->assertEqual($users[1]->Post, $this->post2);
 		
 	}
 	
-	# Test belongsTo relations.
 	public function TestBelongsTo() {
 		
-		# Assert that we have a post.
-		$this->assertEqual($post = $this->postModel->findFirst(), true);
-		
-		# Assert that $post->Author is a StdClass
-		$this->assertTrue($post->Author instanceof StdClass);
-		
-		# Finally, assert the id's match.
-		$this->assertStrict($post->Author->id, $post->author_id);
-		
-	}
-	
-	# Truncate posts when we're done.
-	public function postTesting() {
-		
-		return Database::query('truncate table `posts`');
+		// Find the posts and check the user is correct.
+		$this->assertEqual($posts = Post::findAll(), Post2::findAll());
+		$this->assertEqual(
+			array_map(function($post) {return (object)array_filter((array)$post, function($x) {return !is_object($x);});}, $posts),
+			array($this->post1, $this->post2, $this->post3));
+		$this->assertEqual($posts[0]->Author, User::findFirstById(1, array('cascade' => false)));
+		$this->assertEqual($posts[1]->Author, User::findFirstById(2, array('cascade' => false)));
+		$this->assertEqual($posts[2]->Author, User::findFirstById(1, array('cascade' => false)));
 		
 	}
 	
 }
-
-new RelationshipFindTest;
 
 ?>

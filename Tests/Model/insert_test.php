@@ -1,68 +1,43 @@
 <?php
 
-include_once 'common.php';
-use MVCWebComponents\Database\Database, MVCWebComponents\Model\Model, MVCWebComponents\UnitTest;
+namespace InsertTest;
+use MVCWebComponents\Model\Model, MVCWebComponents\Database\Database, MVCWebComponents\UnitTest\UnitTest;
 
 class Post extends Model {}
 
 class InsertTest extends UnitTest {
 	
-	public function preTesting() {
-		
-		return $this->model = Post::getInstance();
-		
-	}
+	public $dependencies = array('CallStaticTest', 'FindTest', 'InitTest');
 	
-	public function TestInsert() {
+	public function TestBasicInsert() {
 		
-		$post = new StdClass;
-		$post->category_id = 1;
-		$post->author_id = 1;
-		$post->title = 'New Post';
-		$post->content = 'Post Content.';
-		$post->time = time();
+		$post = (object)array(
+			'category_id' => 1,
+			'author_id' => 1,
+			'title' => 'Le Title',
+			'content' => 'Yo Momma',
+			'time' => time());
+		$this->assertTrue(Post::insert($post));
+		$this->assertEqual(Post::findFirstById($post->id), $post);
 		
-		$this->assertTrue($this->model->insert($post));
-		$this->assertEqual($this->model->findFirstByTitle('New Post'), $post);
+		// Failing test: duplicate primary key
+		// $this->assertFalse(Post::insert($post));
 		
 	}
 	
 	public function TestWithCrazyCharacters() {
 		
-		$post = new StdClass;
-		$post->category_id = 1;
-		$post->author_id = 1;
-		$post->title = 'Another New Post';
-		$post->content = "More Post Content \'\"%\0";
-		$post->time = time();
-		
-		$this->assertTrue($this->model->insert($post));
-		
-		$this->assertEqual($_post = $this->model->findFirstByTitle('Another New Post'), $post);
-		
-	}
-	
-	/*public function TestFailing() {
-		
-		$post = new StdClass;
-		$post->category_id = 1;
-		$post->author_id = 1;
-		$post->title = 'New Post'; // Duplicate title...
-		$post->content = "Doesn't matter...";
-		$post->time = time();
-		
-		$this->assertFalse($this->model->insert($post));
-		
-	}*/
-	
-	public function postTesting() {
-		
-		return Database::query('truncate table `posts`');
+		$post = (object)array(
+			'category_id' => 1,
+			'author_id' => 1,
+			'title' => 'Another Title',
+			'content' => "\n\0<>!?$%';SELECT * FROM `secrit`;&^\"'\'<|24ZY <><4|24<T3|2Z",
+			'time' => time());
+		$this->assertTrue(Post::insert($post));
+		$this->assertEqual(Post::findFirstById($post->id), $post);
 		
 	}
 	
 }
-
-new InsertTest;
 
 ?>

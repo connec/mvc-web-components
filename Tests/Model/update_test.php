@@ -1,35 +1,39 @@
 <?php
 
-include 'common.php';
-use MVCWebComponents\Model\Model as Model, MVCWebComponents\UnitTest as UnitTest;
+namespace UpdateTest;
+use MVCWebComponents\Model\Model, MVCWebComponents\Database\Database, MVCWebComponents\UnitTest\UnitTest;
 
-class User extends Model {}
+class Post extends Model {}
 
 class UpdateTest extends UnitTest {
 	
+	public $dependencies = array('InsertTest', 'FindTest', 'CallStaticTest', 'InitTest');
+	
 	public function preTesting() {
 		
-		return $this->user = User::getInstance();
+		// Put some posts in...
+		$this->post1 = (object)array(
+			'category_id' => 1,
+			'author_id' => 1,
+			'title' => 'Post 1 Title',
+			'content' => 'Post 1 Content',
+			'time' => time());
+		$this->assertTrue(Post::insert($this->post1));
+		
+		return true;
 		
 	}
 	
 	public function TestUpdate() {
 		
-		$original = $this->user->findFirst();
-		
-		$new = clone $original;
-		$new->name = 'LORLNAME';
-		
-		$this->assertTrue($this->user->save($new));
-		$this->assertEqual($new, $this->user->findFirst(array('cascade' => false)));
-		
-		$this->assertTrue($this->user->save($original));
-		$this->assertEqual($original, $this->user->findFirst(array('cascade' => false)));
+		$post1 = clone $this->post1;
+		$post1->title = 'New Post 1 Title!';
+		$this->assertTrue(Post::update($post1));
+		$this->assertFalse(Post::findFirstById($post1->id) == $this->post1);
+		$this->assertEqual(Post::findFirstById($post1->id)->title, 'New Post 1 Title!');
 		
 	}
 	
 }
-
-new UpdateTest;
 
 ?>

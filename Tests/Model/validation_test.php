@@ -1,81 +1,109 @@
 <?php
 
-include 'common.php';
-use MVCWebComponents\Model\Model as Model, MVCWebComponents\UnitTest as UnitTest;
+namespace ValidationTest;
+use MVCWebComponents\Model\Model, MVCWebComponents\UnitTest\UnitTest;
 
-function is_multiple_of_five($test) {
-	return ($test % 5 == 0);
-}
+function is_multiple_of_5($x) { return $x % 5 ==0; }
 
 class User extends Model {
 	
-	protected $validate = array(
-		'id' => array('unique', 'numeric'),
-		'name' => array('maxlength' => 32, 'unique', 'required'),
-		'password' => array('maxlength' => 64, 'minlength' => 6, 'required'),
-		'user_group_id' => array('numeric'),
+	protected static $validate = array(
+		'id' => array('unique'),
+		'name' => array(
+			'unique',
+			'required',
+			'minlength' => 3,
+			'maxlength' => 32),
+		'password' => array(
+			'required',
+			'minlength' => 6,
+			'maxlength' => 64),
+		'user_group_id' => array('length' => 1),
+		'joined' => array('length' => 10),
 		'date' => array('dateformat' => 'Y-m-d H:i:s'),
-		'five' => array('callback' => 'is_multiple_of_five')
-	);
+		'email' => array('regex' => '|[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,4}|i'),
+		'five' => array('callback' => 'ValidationTest\\is_multiple_of_5'));
 	
 }
 
 class ValidationTest extends UnitTest {
 	
-	public function preTesting() {
-		
-		return $this->user = User::getInstance();
-		
-	}
+	public $dependencies = array('InitTest');
 	
-	// Test failing the minlength condition, and test ignoring it.
-	public function TestIgnoreAndFailMinLength() {
+	public function TestLengthConditions() {
 		
-		$user =(object)array(
-			'name' => 'Jimminy Billybob',
-			'password' => '1');
-		
-		$this->assertEqual($this->user->validate($user), array('password' => array('minlength' => 6)));
-		$this->assertTrue($this->user->validate($user, array('all' => array('minlength'))));
-		
-	}
-	
-	// Test failing the unique and required conditions
-	public function TestFailUniqueAndRequire() {
-		
+		// Test passing.
 		$user = (object)array(
-			'name' => 'Bob');
+			'name' => 'George',
+			'password' => 'passwizzle',
+			'joined' => time());
+		$this->assertTrue(User::validate($user));
 		
-		$this->assertEqual($this->user->validate($user), array('name' => array('unique' => 'unique'), 'password' => array('required' => 'required')));
+		// Test failing.
+		$user = (object)array(
+			'name' => '',
+			'password' => str_repeat(' ', 65),
+			'joined' => 0);
+		$this->assertFalse(User::validate($user));
+		$this->assertStrict(User::getErrors(), array(
+			'name' => array(
+				'required' => 'required',
+				'minlength' => 3),
+			'password' => array(
+				'maxlength' => 64),
+			'joined' => array(
+				'length' => 10)));
+		
+		$user = (object)array('name' => 'Fred');
+		$this->assertFalse(User::validate($user));
+		$this->assertStrict(User::getErrors(), array('password' => array('required' => 'required')));
 		
 	}
 	
-	// Test passing maxlength, unique, required, minlength and dateformat
-	public function TestPassMaxLenMinLenUniqueRequiredDateFormat() {
+	public function TestUnique() {
 		
-		$user = (object)array(
-			'name' => 'Hello World',
-			'password' => 'Password',
-			'date' => date('Y-m-d H:i:s'));
+		$user = (object)array('name' => 'Fred', 'password' => 'password');
+		$this->assertTrue(User::validate($user));
 		
-		$this->assertTrue($this->user->validate($user));
+		$user->name = 'Bob';
+		$this->assertFalse(User::validate($user));
+		$this->assertStrict(User::getErrors(), array('name' => array('unique' => 'unique')));
 		
 	}
 	
-	// Test passing callback
-	public function TestPassingCallback() {
+	public function TestDateFormat() {
 		
-		$user = (object)array(
-			'name' => 'Not Taken',
-			'password' => 'Passwizzle',
-			'five' => 10);
+		$user = (object)array('name' => 'Fred', 'password' => 'password', 'date' => date('Y-m-d H:i:s'));
+		$this->assertTrue(User::validate($user));
 		
-		$this->assertTrue($this->user->validate($user));
+		$user->date = date('d/m/y H:i:s');
+		$this->assertFalse(User::validate($user));
+		$this->assertStrict(User::getErrors(), array('date' => array('dateformat' => 'Y-m-d H:i:s')));
+		
+	}
+	
+	public function TestRegex() {
+		
+		$user = (object)array('name' => 'Fred', 'password' => 'password', 'email' => 'connec.2002@gmail.com');
+		$this->assertTrue(User::validate($user));
+		
+		$user->email = 'wrong';
+		$this->assertFalse(User::validate($user));
+		$this->assertStrict(User::getErrors(), array('email' => array('regex' => '|[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,4}|i')));
+		
+	}
+	
+	public function TestCallback() {
+		
+		$user = (object)array('name' => 'Fred', 'password' => 'password', 'five' => 10);
+		$this->assertTrue(User::validate($user));
+		
+		$user->five = 7;
+		$this->assertFalse(User::validate($user));
+		$this->assertStrict(User::getErrors(), array('five' => array('callback' => 'ValidationTest\\is_multiple_of_5')));
 		
 	}
 	
 }
-
-new ValidationTest;
 
 ?>

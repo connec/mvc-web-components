@@ -7,14 +7,14 @@
  * @author Chris Connelly
  */
 namespace MVCWebComponents\Model;
-use MVCWebComponents\MVCException, MVCWebComponents\Inflector, MVCWebComponents\Database\Database;
+use MVCWebComponents\MVCException, MVCWebComponents\BadArgumentException, MVCWebComponents\Inflector, MVCWebComponents\Database\Database, MVCWebComponents\ExtensibleStatic;
 
 /**
  * The Model class is an extensible class to allow 'zero configuration' CRUD + extras database interaction.
  * 
  * Once a table has been created in the database all that is needed to allow CRUD functionality is:
  * <code>
- * Class User {}
+ * class User {}
  * </code>
  * 
  * Conventions assumed are:
@@ -24,42 +24,16 @@ use MVCWebComponents\MVCException, MVCWebComponents\Inflector, MVCWebComponents\
  * 
  * The table can be overidden by adding some configuration:
  * <code>
- * Class User {
+ * class User {
  *    protected $tableName = 'ApplicationUser'; // Or whatever...
  * }
  * </code>
  * 
  * For specific operations see the method documentations.
  * 
- * @version 0.7
+ * @version 0.8
  */
-abstract class Model {
-	
-	/**
-	 * Array of model instances.
-	 * 
-	 * Contains an array of model instances, indexed by alias, to allow singleton functionality (per alias).
-	 * 
-	 * @var array
-	 * @since 0.1
-	 */
-	protected static $models = array();
-	
-	/**
-	 * The alias this model is stored under.
-	 * 
-	 * @var string
-	 * @since 0.1
-	 */
-	protected $alias;
-	
-	/**
-	 * A representation of the database table the model is describing.
-	 * 
-	 * @var object
-	 * @since 0.1
-	 */
-	protected $table;
+abstract class Model extends ExtensibleStatic {
 	
 	/**
 	 * Table name to use.
@@ -69,7 +43,7 @@ abstract class Model {
 	 * @var string
 	 * @since 0.3
 	 */
-	protected $tableName;
+	protected static $tableName;
 	
 	/**
 	 * An array of validation rules to apply.
@@ -96,7 +70,7 @@ abstract class Model {
 	 * @since 0.2
 	 * @see validate()
 	 */
-	protected $validate = array();
+	protected static $validate = array();
 	
 	/**
 	 * Describes 'has one' relationships.
@@ -120,7 +94,7 @@ abstract class Model {
 	 * @since 0.3
 	 * @see $hasMany, $belongsTo, find()
 	 */
-	protected $hasOne = array();
+	protected static $hasOne = array();
 	
 	/**
 	 * Describes 'has many' relationships.
@@ -133,7 +107,7 @@ abstract class Model {
 	 * @since 0.3
 	 * @see $hasOne, $belongsTo, find()
 	 */
-	protected $hasMany = array();
+	protected static $hasMany = array();
 	
 	/**
 	 * Described 'belongs to' relationships.
@@ -146,30 +120,18 @@ abstract class Model {
 	 * @since 0.3
 	 * @see $hasOne, $hasMany, find()
 	 */
-	protected $belongsTo = array();
+	protected static $belongsTo = array();
 	
 	/**
-	 * Getter for {@link $alias}.
-	 * 
-	 * @return string The value of {@link $alias}.
-	 * @since 0.1
-	 * @see $alias
-	 */
-	public function getAlias() {
-		
-		return $this->alias;
-		
-	}
-	
-	/**
-	 * Returns the name of the model (class).
+	 * Returns the (fully qualified) name of the model (class).
 	 * 
 	 * @return string The name of the model.
 	 * @since 0.1
 	 */
-	public function getName() {
+	public static function getName() {
 		
-		return get_class($this);
+		static::__init();
+		return get_called_class();
 		
 	}
 	
@@ -180,9 +142,10 @@ abstract class Model {
 	 * @since 0.1
 	 * @see Table
 	 */
-	public function getTableName() {
+	public static function getTableName() {
 		
-		return $this->table->getName();
+		static::__init();
+		return static::properties()->table->getName();
 		
 	}
 	
@@ -193,9 +156,10 @@ abstract class Model {
 	 * @since 0.1
 	 * @see Table
 	 */
-	public function getPrimaryKey() {
+	public static function getPrimaryKey() {
 		
-		return $this->table->getPrimaryKey();
+		static::__init();
+		return static::properties()->table->getPrimaryKey();
 		
 	}
 	
@@ -206,62 +170,88 @@ abstract class Model {
 	 * @since 0.4
 	 * @see Table
 	 */
-	public function getFields() {
+	public static function getFields() {
 		
-		return $this->table->getFields();
-		
-	}
-	
-	/**
-	 * Returns an instance of the model with index $alias. Creates and stores an instance if one does not exist.
-	 * 
-	 * @param string $alias The alias the model should is stored under.
-	 * @return &object The instance of the model, by reference.
-	 * @since 0.1
-	 */
-	public static function &getInstance($alias = '') {
-		
-		$name = get_called_class();
-		if(!$alias) $alias = $name;
-		
-		if(!isset(Model::$models[$alias])) {
-			Model::$models[$alias] = true; // Feels a bit hackish, but stops infinite loops generating related models array.
-			Model::$models[$alias] = new $name($alias);
-		}
-		
-		return Model::$models[$alias];
+		static::__init();
+		return static::properties()->table->getFields();
 		
 	}
 	
 	/**
-	 * Clears the $models register, allowing it to be repopulated.  Most useful in debugging.
+	 * Returns an array of validation errors from the most recent call to {@see validate()}.
 	 * 
-	 * @return void
-	 * @since 0.7
+	 * @return array Validation errors.
+	 * @since 0.8
+	 * @see validate()
 	 */
-	public static function clearInstances() {
+	public static function getErrors() {
 		
-		Model::$models = array();
+		static::__init();
+		return isset(static::p()->errors) ? static::p()->errors : array();
+		
+	}
+	
+	/**
+	 * Returns an StdClass with all the current static values (very useful for debugging)
+	 * 
+	 * @param bool $return When true, returns the object instead of dumping it.
+	 * @return StdClass An object containing the current values of useful static properties.
+	 * @since 0.8
+	 */
+	public static function dump($dump = true) {
+		
+		static::__init();
+		
+		$return = static::properties();
+		
+		if(!$dump) return $return;
+		var_dump($return);
 		
 	}
 	
 	/**
 	 * Sets up the model for use.
 	 * 
-	 * @param string $alias The alias to assign to this model.
 	 * @return void
-	 * @since 0.1
+	 * @since 0.8
 	 * @throws BadConfigurationException Thrown when an invalid relationship definition is encountered.
 	 */
-	protected function __construct($alias) {
+	public static function __init() {
 		
-		$this->alias = $alias;
+		if(!isset(static::$states[get_called_class()])) static::$states[get_called_class()] = new \StdClass;
+		else return;
 		
-		if(!$this->tableName) $this->tableName = Inflector::tableize($this->getName());
-		$this->table = Table::getInstance($this->tableName);
+		// Store the model name (sans namespace) in the metadata.
+		static::p()->name = @end(explode('\\', static::getName()));
+		static::p()->tableName = static::$tableName ?: Inflector::tableize(static::p()->name);
+		static::p()->table = Table::getInstance(static::p()->tableName);
+		static::p()->validate = static::$validate ?: array();
 		
-		// Build the related models array.
-		$relationConfig = array('hasOne' => &$this->hasOne, 'hasMany' => &$this->hasMany, 'belongsTo' => &$this->belongsTo);
+		static::normalizeRelations();
+		
+	}
+	
+	/**
+	 * Normalizes the relation arrays to the standard form:
+	 * <code>
+	 * array(
+	 *   'Alias' => array(
+	 *      'model' => 'ModelName',
+	 *      'foreignKey' => 'alias_id',
+	 *      'options' => array() // Options to pass to the find() method.
+	 *   )
+	 * );
+	 * 
+	 * @return void
+	 * @since 0.8
+	 */
+	protected static function normalizeRelations() {
+		
+		static::properties()->hasOne = static::$hasOne;
+		static::properties()->hasMany = static::$hasMany;
+		static::properties()->belongsTo = static::$belongsTo;
+		
+		$relationConfig = array('hasOne' => &static::properties()->hasOne, 'hasMany' => &static::properties()->hasMany, 'belongsTo' => &static::properties()->belongsTo);
 		foreach($relationConfig as $relationType => &$relations) {
 			foreach($relations as $index => &$relation) {
 				if(is_int($index) and is_string($relation)) {
@@ -270,14 +260,23 @@ abstract class Model {
 					$relation =& $relations[$alias];
 					unset($relations[$index]);
 				}elseif(is_string($index) and is_array($relation)) $alias = $model = $index;
-				else throw new BadConfigurationException("Invalid $relationType configuration in model " . $this->getName() . ', see documentation for correct format.');
+				else throw new BadConfigurationException("Invalid $relationType configuration in model " . static::getName() . ', see documentation for correct format.');
 				
 				if(isset($relation['model'])) $model = $relation['model'];
 				else $relation['model'] = $model;
-				$relation['model'] =& $model::getInstance($alias);
 				
-				$key = Inflector::underscore($this->getAlias()) . '_' . $this->getPrimaryKey();
-				if($relationType == 'belongsTo') $key = Inflector::underscore($alias) . '_' . $relation['model']->getPrimaryKey();
+				// Deal with namespacing
+				if(!class_exists($relation['model'], false)) {
+					// Try prefixing the namespace of the current model.
+					$namespace = str_replace(static::p()->name, '', get_called_class());
+					$relation['model'] = "$namespace$model";
+					
+					// Run a method with that class, if it doesn't exist the user will have to sort it out.
+					$relation['model']::getName();
+				}
+				
+				$key = Inflector::underscore(static::properties()->name) . '_' . static::getPrimaryKey();
+				if($relationType == 'belongsTo') $key = Inflector::underscore($alias) . '_' . $relation['model']::getPrimaryKey();
 				if(isset($relation['foreignKey'])) $key = $relation['foreignKey'];
 				else $relation['foreignKey'] = $key;
 				
@@ -306,11 +305,11 @@ abstract class Model {
 	 * @since 0.2
 	 * @see find()
 	 */
-	public function __call($name, $args) {
+	public static function __callStatic($name, $args) {
 		
 		$methodParts = explode('_', Inflector::underscore($name));
 		
-		$model = $this->getName();
+		$model = static::getName();
 		$error = function() use ($name, $model) {trigger_error("Call to undefined method " . $model . "::" . $name . "()", E_USER_ERROR);};
 		if(array_shift($methodParts) != 'find') $error();
 				
@@ -328,18 +327,18 @@ abstract class Model {
 		}
 		if(empty($methodParts)) {
 			if(!isset($args[0]) or !is_array($args[0])) $args[0] = array();
-			return call_user_func(array($this, 'find'), array_merge($args[0], $options));
+			return call_user_func(array(static::getName(), 'find'), array_merge($args[0], $options));
 		}
 		
 		if(array_shift($methodParts) != 'by') $error();
 		if(empty($methodParts)) $error();
 		
 		$field = implode('_', $methodParts);
-		if(!in_array($field, $this->getFields())) $error();
+		if(!in_array($field, static::getFields())) $error();
 		$options['conditions'] = array($field => $args[0]);
 		if(!isset($args[1]) or !is_array($args[1])) $args[1] = array();
 		if(isset($args[1]['conditions'])) $options['conditions'] = array_merge($args[1]['conditions'], $options['conditions']);
-		return $this->find(array_merge($args[1], $options));
+		return static::find(array_merge($args[1], $options));
 		
 	}
 	
@@ -368,7 +367,9 @@ abstract class Model {
 	 * @return mixed Array or object of results.
 	 * @since 0.1
 	 */
-	public function find($options = array()) {
+	public static function find($options = array()) {
+		
+		static::__init();
 		
 		// Fill any unset options with defaults.
 		$defaults = array(
@@ -380,11 +381,35 @@ abstract class Model {
 			'limit' => 0,
 			'operator' => 'and',
 			'cascade' => true,
-			'processed' => array($this->getName())
+			'processed' => array(static::getName())
 		);
 		$options = array_merge($defaults, $options);
 		
-		// Process the conditions into valid SQL.
+		// Get the SQL query.
+		$query = static::buildSQL($options);
+		
+		// Execute query and store result.
+		Database::query($query);
+		if($options['type'] == 'first') $return = Database::getRow($options['return']);
+		else $return = Database::getAll($options['return']);
+		
+		// Relate the result if in the options.
+		if($options['cascade']) static::findRelated($return, $options['processed']);
+		
+		// Return it.
+		return $return;
+		
+	}
+	
+	/**
+	 * Constructs an SQL query from given options.
+	 * 
+	 * @param array $options The options as passed to find.
+	 * @return string An SQL query string.
+	 * @since 0.8
+	 */
+	protected static function buildSQL($options) {
+		
 		foreach($options['conditions'] as $key => $value) {
 			if(is_string($key)) {
 				// Parse the value for operators.
@@ -402,35 +427,26 @@ abstract class Model {
 					$operator = '=';
 					$value = "'" . Database::escape($value) . "'";
 				}
-				$options['conditions'][] = "`$this->alias`.`$key` $operator $value";
+				$options['conditions'][] = "`" . static::getName() . "`.`$key` $operator $value";
 				unset($options['conditions'][$key]);
 			}
 		}
 		
 		// Sort out the 'fields' options.
-		if(is_array($options['fields'])) $options['fields'] = "`$this->alias`.`" . implode("`,`$this->alias`.`", $options['fields']) . '`';
+		if(is_array($options['fields'])) $options['fields'] = "`" . static::getName() . "`.`" . implode("`,`" . static::getName() . "`.`", $options['fields']) . '`';
 		
 		// Start building the query.
-		$query = 'select ' . $options['fields'] . ' from `' . $this->getTableName() . "` as `$this->alias` where " . (implode(' ' . $options['operator'] . ' ', $options['conditions']) ?: '1');
+		$query = 'select ' . $options['fields'] . ' from `' . static::getTableName() . "` as `" . static::getName() . "` where " . (implode(' ' . $options['operator'] . ' ', $options['conditions']) ?: '1');
 		
 		// Append the other options.
 		if($options['orderBy']) {
-			list($field, $dir) = explode(' ', $options['orderBy']);
+			@list($field, $dir) = explode(' ', $options['orderBy']);
 			if($dir != 'asc' and $dir != 'desc') $dir = 'asc';
-			$query .= " order by `$this->alias`.`$field` $dir";
+			$query .= " order by `" . static::getName() . "`.`$field` $dir";
 		}
 		if($options['limit']) $query .= ' limit ' . $options['limit'];
 		
-		// Execute query and store result.
-		Database::query($query);
-		if($options['type'] == 'first') $return = Database::getRow($options['return']);
-		else $return = Database::getAll($options['return']);
-		
-		// Relate the result if in the options.
-		if($options['cascade']) $this->findRelated($return, $options['processed']);
-		
-		// Return it.
-		return $return;
+		return $query;
 		
 	}
 	
@@ -445,26 +461,26 @@ abstract class Model {
 	 * @since 0.3
 	 * @throws BadArgumentException Thrown when $result is not an object or array.
 	 */
-	protected function findRelated(&$result, $processed) {
+	protected static function findRelated(&$result, $processed) {
 		
-		if(empty($result) or (empty($this->hasOne) and empty($this->hasMany) and empty($this->belongsTo))) return;
-		if(is_array($result) and isset($result[0])) foreach($result as &$_result) $this->findRelated($_result, $processed);
+		if(empty($result) or (empty(static::p()->hasOne) and empty(static::p()->hasMany) and empty(static::p()->belongsTo))) return;
+		if(is_array($result) and isset($result[0])) foreach($result as &$_result) static::findRelated($_result, $processed);
 		elseif(is_object($result)) {
-			foreach(array('hasOne' => $this->hasOne, 'hasMany' => $this->hasMany, 'belongsTo' => $this->belongsTo) as $relationType => $relations) {
+			foreach(array('hasOne' => static::p()->hasOne, 'hasMany' => static::p()->hasMany, 'belongsTo' => static::p()->belongsTo) as $relationType => $relations) {
 				foreach($relations as $alias => $relation) {
-					$model =& $relation['model'];
-					
 					// Prevent infinite looping, don't relate this model if it's already been related in this cascading find operation.
-					if(in_array($model->getName(), $processed)) continue;
-					else $relation['options']['processed'][] = $this->getName();
+					if(in_array($relation['model'], $processed)) continue;
+					
+					$processed[] = $relation['model'];
+					$relation['options']['processed'] = $processed;
 					
 					if(!isset($relation['options']['conditions'])) $relation['options']['conditions'] = array();
-					if($relationType == 'belongsTo') $relation['options']['conditions'][$model->getPrimaryKey()] = $result->{$relation['foreignKey']};
-					else $relation['options']['conditions'][$relation['foreignKey']] = $result->{$this->getPrimaryKey()};
+					if($relationType == 'belongsTo') $relation['options']['conditions'][$relation['model']::getPrimaryKey()] = $result->{$relation['foreignKey']};
+					else $relation['options']['conditions'][$relation['foreignKey']] = $result->{static::getPrimaryKey()};
 					
 					if($relationType == 'hasMany') $alias = Inflector::pluralize($alias);
 					
-					$result->{$alias} = $model->find($relation['options']);
+					$result->{$alias} = $relation['model']::find($relation['options']);
 				}
 			}
 		}else throw new BadArgumentException('Model::findRelated() expects parameter 1 to be object or array, \'' . gettype($result) . '\' given.');
@@ -479,21 +495,23 @@ abstract class Model {
 	 * @since 0.1
 	 * @throws BadArgumentException Thrown when $data is not an object.
 	 */
-	public function insert(&$data) {
+	public static function insert(&$data) {
+		
+		static::__init();
 		
 		if(!is_object($data)) throw new BadArgumentException("Model::insert() requires an object as input.");
 		
 		$fields = array();
 		$values = array();
 		foreach($data as $field => $value) {
-			if(!in_array($field, $this->getFields())) continue;
+			if(!in_array($field, static::getFields())) continue;
 			$fields[] = "`$field`";
 			$values[] = "'" . Database::escape($value) . "'";
 		}
 		
-		$query = 'insert into `' . $this->getTableName() . "` (" . implode(', ', $fields) . ') values (' . implode(', ', $values) . ')';
+		$query = 'insert into `' . static::getTableName() . "` (" . implode(', ', $fields) . ') values (' . implode(', ', $values) . ')';
 		if(Database::query($query)) {
-			if(Database::getInsertId()) $data->{$this->getPrimaryKey()} = Database::getInsertId();
+			if(Database::getInsertId()) $data->{static::getPrimaryKey()} = Database::getInsertId();
 			return true;
 		}else return false;
 		
@@ -509,19 +527,21 @@ abstract class Model {
 	 * @since 0.1
 	 * @throws BadArgumentException Thrown when $data is not an object or does not contain a value for the primary key.
 	 */
-	public function update($data) {
+	public static function update($data) {
+		
+		static::__init();
 		
 		if(!is_object($data)) throw new BadArgumentException("Model::update() requires an object as input.");
-		if(!isset($data->{$this->getPrimaryKey()})) throw new BadArgumentException("Model::update() requires the supplied data to include the primary key of the item to update.");
+		if(!isset($data->{static::getPrimaryKey()})) throw new BadArgumentException("Model::update() requires the supplied data to include the primary key of the item to update.");
 		
-		$primaryKey = $data->{$this->getPrimaryKey()};
+		$primaryKey = $data->{static::getPrimaryKey()};
 		$updates = array();
 		foreach($data as $field => $value) {
-			if(!in_array($field, $this->getFields()) or $field == $this->getPrimaryKey()) continue;
+			if(!in_array($field, static::getFields()) or $field == static::getPrimaryKey()) continue;
 			$updates[] = "`$field` = '" . Database::escape($value) . "'";
 		}
 		
-		$query = 'update `' . $this->getTableName() . '` set ' . implode(', ', $updates) . ' where `' . $this->getPrimaryKey() . "` = '$primaryKey' limit 1";
+		$query = 'update `' . static::getTableName() . '` set ' . implode(', ', $updates) . ' where `' . static::getPrimaryKey() . "` = '$primaryKey' limit 1";
 		return Database::query($query);
 		
 	}
@@ -541,7 +561,9 @@ abstract class Model {
 	 * @since 0.1
 	 * @throws BadArgumentException Thrown when $data is not an object or $options is not an array.
 	 */
-	public function save(&$data, $options = array()) {
+	public static function save(&$data, $options = array()) {
+		
+		static::__init();
 		
 		if(!is_object($data)) throw new BadArgumentException("Model::save() expects parameter 1 to be an object, '" . gettype($data) . "' given.");
 		if(!is_array($options)) throw new BadArgumentException("Model::save() expected parameter 2 to be an array, '" . gettype($options) . "' given.");
@@ -550,37 +572,38 @@ abstract class Model {
 		$return = array();
 		
 		if($options['cascade']) {
-			foreach($this->belongsTo as $alias => $relation) {
+			foreach(static::p()->belongsTo as $alias => $relation) {
 				if(!isset($data->{$alias})) continue;
-				$return[] = $relation['model']->save($data->{$alias}, $options);
-				$data->{$relation['foreignKey']} = $data->{$alias}->{$relation['model']->getPrimaryKey()};
+				$return[] = $relation['model']::save($data->{$alias}, $options);
+				$data->{$relation['foreignKey']} = $data->{$alias}->{$relation['model']::getPrimaryKey()};
 			}
 		}
 		
-		if(!isset($data->{$this->getPrimaryKey()})) $function = 'insert';
-		elseif(!$this->{'findFirstBy' . Inflector::camelize($this->getPrimaryKey())}($data->{$this->getPrimaryKey()})) $function = 'insert';
+		$idFunction = 'findFirstBy' . Inflector::camelize(static::getPrimaryKey());
+		if(!isset($data->{static::getPrimaryKey()})) $function = 'insert';
+		elseif(!static::$idFunction($data->{static::getPrimaryKey()})) $function = 'insert';
 		else $function = 'update';
-		if($options['validate']) if($this->validate($data) !== true) return false;
-		$return[] = $this->$function($data);
+		
+		if($options['validate']) if(static::validate($data) !== true) return false;
+		$return[] = static::$function($data);
 		
 		if($options['cascade']) {
-			foreach($this->hasMany as $alias => $relation) {
+			foreach(static::p()->hasMany as $alias => $relation) {
 				$alias = Inflector::pluralize($alias);
 				if(!isset($data->{$alias})) continue;
 				foreach($data->{$alias} as &$_data) {
-					$_data->{$relation['foreignKey']} = $data->{$this->getPrimaryKey()};
-					$return[] = $relation['model']->save($_data, $options);
+					$_data->{$relation['foreignKey']} = $data->{static::getPrimaryKey()};
+					$return[] = $relation['model']::save($_data, $options);
 				}
 			}
-			foreach($this->hasOne as $alias => $relation) {
+			foreach(static::p()->hasOne as $alias => $relation) {
 				if(!isset($data->{$alias})) continue;
-				$data->{$alias}->{$relation['foreignKey']} = $data->{$this->getPrimaryKey()};
-				$return[] = $relation['model']->save($data->{$alias}, $options);
+				$data->{$alias}->{$relation['foreignKey']} = $data->{static::getPrimaryKey()};
+				$return[] = $relation['model']::save($data->{$alias}, $options);
 			}
 		}
 		
-		foreach($return as $bool) if(!$bool) return false;
-		return true;
+		return array_reduce($return, function($a,$b){return $a and $b;}, true);
 		
 	}
 	
@@ -592,13 +615,15 @@ abstract class Model {
 	 * @since 0.1
 	 * @throws BadArgumentException Thrown when $data is not an object or it does not contain a value for the primary key.
 	 */
-	public function delete($data) {
+	public static function delete($data) {
+		
+		static::__init();
 		
 		if(!is_object($data)) throw new BadArgumentException("Model::delete() requires an array or object as input.");
-		if(!isset($data->{$this->getPrimaryKey()})) throw new BadArgumentException("Model::delete() requires the supplied data to include the primary key of the item to update.");
+		if(!isset($data->{static::getPrimaryKey()})) throw new BadArgumentException("Model::delete() requires the supplied data to include the primary key of the item to update.");
 		
-		$primaryKey = $data->{$this->getPrimaryKey()};
-		$query = 'delete from `' . $this->getTableName() .'` where `' . $this->getPrimaryKey() . "` = '$primaryKey' limit 1";
+		$primaryKey = $data->{static::getPrimaryKey()};
+		$query = 'delete from `' . static::getTableName() .'` where `' . static::getPrimaryKey() . "` = '$primaryKey' limit 1";
 		return Database::query($query);
 		
 	}
@@ -614,15 +639,17 @@ abstract class Model {
 	 * @throws BadArgumentException Thrown when $data is not an object or $ignore is not an array.
 	 * @throws BadConfigurationException Thrown when an invalid rule is encountered in {@link $validate}.
 	 */
-	public function validate($data, $ignore = array()) {
+	public static function validate($data, $ignore = array()) {
+		
+		static::__init();
 		
 		if(!is_object($data)) throw new BadArgumentException("Model::validate() expects parameter 1 to be an object, " . gettype($data) . ' given.');
 		if(!is_array($ignore)) throw new BadArgumentException("Model::validate() expects parameter 2 to be an array, '" . gettype($ignore) . "' given.");
 		
-		if(empty($this->validate)) return true;
+		if(empty(static::p()->validate)) return true;
 		
 		$errors = array();
-		foreach($this->validate as $field => $rules) {
+		foreach(static::p()->validate as $field => $rules) {
 			foreach($rules as $rule => $args) {
 				if(is_int($rule)) $rule = $args;
 				
@@ -647,7 +674,8 @@ abstract class Model {
 					case 'numeric':
 						$pass = is_numeric($value);
 					case 'unique':
-						$pass = !(bool)$this->{'findFirstBy' . Inflector::camelize($field)}($value);
+						$function = 'findFirstBy' . Inflector::camelize($field);
+						$pass = !(bool)static::$function($value);
 						break;
 					case 'date':
 						$pass = !is_bool(strtotime(strval($value)));
@@ -665,21 +693,22 @@ abstract class Model {
 						}elseif(is_callable($args)) {
 							$callback = $args;
 							$_args = array();
-						}
+						}else throw new BadConfigurationException("Invalid callback defined in model " . static::getName());
 						$pass = (bool)call_user_func_array($callback, array($value) + $_args);
 						break;
 					case 'required':
 						$pass = !empty($value);
 						break;
 					default:
-						throw new BadConfigurationException("Invalid validation rule '$rule' defined in model " . $this->getName());
+						throw new BadConfigurationException("Invalid validation rule '$rule' defined in model " . static::getName());
 						break;
 				}
 				if(!$pass) $errors[$field][$rule] = $args;
 			}
 		}
 		
-		return empty($errors) ? true : $errors;
+		static::p()->errors = $errors;
+		return empty($errors);
 		
 	}
 	

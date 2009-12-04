@@ -1,72 +1,37 @@
 <?php
 
-include 'common.php';
-
-use MVCWebComponents\Model\Model as Model, MVCWebComponents\UnitTest as UnitTest, MVCWebComponents\Database\Database as Database;
+namespace SaveTest;
+use MVCWebComponents\Model\Model, MVCWebComponents\Database\Database, MVCWebComponents\UnitTest\UnitTest;
 
 class Post extends Model {}
 
 class SaveTest extends UnitTest {
 	
-	// Initiate our Post model.
-	public function preTesting() {
+	public $dependencies = array('InsertTest', 'UpdateTest');
+	
+	public function TestInsertion() {
 		
-		return $this->model = Post::getInstance();
+		// Test a new record is inserted.
+		$post = (object)array(
+			'category_id' => 1,
+			'author_id' => 1,
+			'title' => 'Post 1 Title',
+			'content' => 'Post 1 content...',
+			'time' => time());
+		$this->assertTrue(Post::save($post));
+		$this->assertEqual(Post::findFirst(array('cascade' => false)), $post);
 		
 	}
 	
-	// Test insertion when record not in DB
-	public function TestInserts() {
-		
-		// Create some posts...
-		$post1 = (object)array(
-			'category_id' => 1,
-			'author_id' => 1,
-			'title' => 'Post Title',
-			'content' => 'Post Content',
-			'time' => time());
-		
-		$post2 = (object)array(
-			'category_id' => 1,
-			'author_id' => 1,
-			'title' => 'Another Title',
-			'content' => 'More Content...',
-			'time' => time());
-		
-		// Ensure they're inserted (i.e. the primary key is set)
-		$this->assertTrue($this->model->save($post1));
-		$this->assertEqual($post1->id, true);
-		$this->assertTrue($this->model->save($post2));
-		$this->assertEqual($post2->id, true);
-		
-		// Double check by comparing them with database results...
-		$this->assertEqual($post1, $this->model->findFirstById($post1->id));
-		$this->assertEqual($post2, $this->model->findFirstById($post2->id));
-		
-	}
-	
-	// Test updating...
 	public function TestUpdating() {
 		
-		$this->assertEqual($post = $this->model->findFirst(), true);
-		
-		$post->title = 'Updated Title.';
-		$this->assertTrue($this->model->save($post));
-		
-		// Check it updated...
-		$this->assertEqual($this->model->findFirst(), $post);
-		
-	}
-	
-	// Cleanup the table afterwards.
-	public function postTesting() {
-		
-		return Database::query('truncate table `posts`');
+		$this->assertEqual($post = Post::findFirst(), true);
+		$post->title = 'New Title';
+		$this->assertTrue(Post::save($post));
+		$this->assertEqual(Post::findFirst()->title, 'New Title');
 		
 	}
 	
 }
-
-new SaveTest;
 
 ?>

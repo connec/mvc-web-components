@@ -1,41 +1,29 @@
 <?php
 
-include_once 'common.php';
-use MVCWebComponents\Database\Database, MVCWebComponents\Model\Model, MVCWebComponents\UnitTest;
+namespace DeleteTest;
+use MVCWebComponents\Model\Model, MVCWebComponents\Database\Database, MVCWebComponents\UnitTest\UnitTest;
 
 class Post extends Model {}
 
 class DeleteTest extends UnitTest {
 	
-	public function preTesting() {
-		
-		return $this->model = Post::getInstance();
-		
-	}
+	public $dependencies = array('CallStaticTest', 'FindTest', 'SaveTest');
 	
 	public function TestDelete() {
 		
-		$post = new StdClass;
-		$post->category_id = 1;
-		$post->author_id = 1;
-		$post->title = 'Post Title';
-		$post->content = 'Post Content';
-		$post->time = time();
-		
-		$this->assertTrue($this->model->save($post));
-		$this->assertTrue($this->model->delete($post));
-		$this->assertEqual(count($this->model->findAllById($post->id)), 0);
-		
-	}
-	
-	public function postTesting() {
-		
-		return Database::query('truncate table `posts`');
+		$post = (object)array(
+			'category_id' => 1,
+			'author_id' => 1,
+			'title' => 'Post Title',
+			'content' => 'Post Content',
+			'time' => time());
+		$this->assertTrue(Post::save($post));
+		$this->assertEqual(Post::findFirst(), $post);
+		$this->assertTrue(Post::delete($post));
+		$this->assertEqual(Post::findAll(), array());
 		
 	}
 	
 }
-
-new DeleteTest;
 
 ?>
