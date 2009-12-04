@@ -1,7 +1,7 @@
 <?php
 
 namespace RelationshipSaveTest;
-use MVCWebComponents\Model\Model, MVCWebComponents\Database\Database, MVCWebComponents\UnitTest;
+use MVCWebComponents\Model\Model, MVCWebComponents\Database\Database, MVCWebComponents\UnitTest\UnitTest, \ModelTests;
 
 class User extends Model {
 	
@@ -88,8 +88,9 @@ class RelationshipSaveTest extends UnitTest {
 	public function TestHasManyInsert() {
 		
 		$this->assertEqual($posts = Post::findAll(array('fields' => array('category_id','title','content','time'), 'cascade' => false)), true);
+		
 		// Reset everything for convenience.
-		$this->assertTrue($this->postTesting());
+		ModelTests::runHook('postTest');
 		
 		$user = User::findFirst();
 		$user->Posts = $posts;
@@ -107,14 +108,6 @@ class RelationshipSaveTest extends UnitTest {
 		$this->assertTrue(User::save($user, array('cascade' => true)));
 		$this->assertEqual(User::findFirst()->Posts[0]->title, 'New Title for 1st Post');
 		$this->assertEqual(User::findFirst()->Posts[1]->content, 'Mayhaps some new content?');
-		
-	}
-	
-	public function postTesting() {
-		
-		return
-			Database::query('truncate table `posts`') and
-			Database::query('delete from `users` where `name` = \'Delete\'');
 		
 	}
 	

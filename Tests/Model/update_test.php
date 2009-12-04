@@ -1,7 +1,7 @@
 <?php
 
 namespace UpdateTest;
-use MVCWebComponents\Model\Model, MVCWebComponents\Database\Database, MVCWebComponents\UnitTest;
+use MVCWebComponents\Model\Model, MVCWebComponents\Database\Database, MVCWebComponents\UnitTest\UnitTest;
 
 class Post extends Model {}
 
@@ -31,12 +31,6 @@ class UpdateTest extends UnitTest {
 		$this->assertTrue(Post::update($post1));
 		$this->assertFalse(Post::findFirstById($post1->id) == $this->post1);
 		$this->assertEqual(Post::findFirstById($post1->id)->title, 'New Post 1 Title!');
-		
-	}
-	
-	public function postTesting() {
-		
-		return Database::query('truncate table `posts`');
 		
 	}
 	

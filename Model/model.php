@@ -136,7 +136,7 @@ abstract class Model {
 	 * @return StdClass
 	 * @since 0.8
 	 */
-	public static function &properties() {
+	protected static function &properties() {
 		
 		return self::$models[get_called_class()];
 		
@@ -148,7 +148,7 @@ abstract class Model {
 	 * @return StdClass
 	 * @since 0.8
 	 */
-	public static function &p() {
+	protected static function &p() {
 		
 		return static::properties();
 		
@@ -210,6 +210,20 @@ abstract class Model {
 	}
 	
 	/**
+	 * Returns an array of validation errors from the most recent call to {@see validate()}.
+	 * 
+	 * @return array Validation errors.
+	 * @since 0.8
+	 * @see validate()
+	 */
+	public static function getErrors() {
+		
+		static::__init();
+		return isset(static::p()->errors) ? static::p()->errors : array();
+		
+	}
+	
+	/**
 	 * Returns an StdClass with all the current static values (very useful for debugging)
 	 * 
 	 * @param bool $return When true, returns the object instead of dumping it.
@@ -240,12 +254,10 @@ abstract class Model {
 		else return;
 		
 		// Store the model name (sans namespace) in the metadata.
-		static::properties()->name = @end(explode('\\', static::getName()));
-		
-		if(!static::$tableName) static::properties()->tableName = Inflector::tableize(static::properties()->name);
-		else static::properties()->tableName = static::$tableName;
-		
-		static::properties()->table = Table::getInstance(static::properties()->tableName);
+		static::p()->name = @end(explode('\\', static::getName()));
+		static::p()->tableName = static::$tableName ?: Inflector::tableize(static::p()->name);
+		static::p()->table = Table::getInstance(static::p()->tableName);
+		static::p()->validate = static::$validate ?: array();
 		
 		static::normalizeRelations();
 		
@@ -286,7 +298,7 @@ abstract class Model {
 				else $relation['model'] = $model;
 				
 				// Deal with namespacing
-				if(!class_exists($relation['model'])) {
+				if(!class_exists($relation['model'], false)) {
 					// Try prefixing the namespace of the current model.
 					$namespace = str_replace(static::p()->name, '', get_called_class());
 					$relation['model'] = "$namespace$model";
@@ -388,6 +400,8 @@ abstract class Model {
 	 * @since 0.1
 	 */
 	public static function find($options = array()) {
+		
+		static::__init();
 		
 		// Fill any unset options with defaults.
 		$defaults = array(
@@ -515,6 +529,8 @@ abstract class Model {
 	 */
 	public static function insert(&$data) {
 		
+		static::__init();
+		
 		if(!is_object($data)) throw new BadArgumentException("Model::insert() requires an object as input.");
 		
 		$fields = array();
@@ -544,6 +560,8 @@ abstract class Model {
 	 * @throws BadArgumentException Thrown when $data is not an object or does not contain a value for the primary key.
 	 */
 	public static function update($data) {
+		
+		static::__init();
 		
 		if(!is_object($data)) throw new BadArgumentException("Model::update() requires an object as input.");
 		if(!isset($data->{static::getPrimaryKey()})) throw new BadArgumentException("Model::update() requires the supplied data to include the primary key of the item to update.");
@@ -576,6 +594,8 @@ abstract class Model {
 	 * @throws BadArgumentException Thrown when $data is not an object or $options is not an array.
 	 */
 	public static function save(&$data, $options = array()) {
+		
+		static::__init();
 		
 		if(!is_object($data)) throw new BadArgumentException("Model::save() expects parameter 1 to be an object, '" . gettype($data) . "' given.");
 		if(!is_array($options)) throw new BadArgumentException("Model::save() expected parameter 2 to be an array, '" . gettype($options) . "' given.");
@@ -627,13 +647,15 @@ abstract class Model {
 	 * @since 0.1
 	 * @throws BadArgumentException Thrown when $data is not an object or it does not contain a value for the primary key.
 	 */
-	public function delete($data) {
+	public static function delete($data) {
+		
+		static::__init();
 		
 		if(!is_object($data)) throw new BadArgumentException("Model::delete() requires an array or object as input.");
-		if(!isset($data->{$this->getPrimaryKey()})) throw new BadArgumentException("Model::delete() requires the supplied data to include the primary key of the item to update.");
+		if(!isset($data->{static::getPrimaryKey()})) throw new BadArgumentException("Model::delete() requires the supplied data to include the primary key of the item to update.");
 		
-		$primaryKey = $data->{$this->getPrimaryKey()};
-		$query = 'delete from `' . $this->getTableName() .'` where `' . $this->getPrimaryKey() . "` = '$primaryKey' limit 1";
+		$primaryKey = $data->{static::getPrimaryKey()};
+		$query = 'delete from `' . static::getTableName() .'` where `' . static::getPrimaryKey() . "` = '$primaryKey' limit 1";
 		return Database::query($query);
 		
 	}
@@ -649,7 +671,9 @@ abstract class Model {
 	 * @throws BadArgumentException Thrown when $data is not an object or $ignore is not an array.
 	 * @throws BadConfigurationException Thrown when an invalid rule is encountered in {@link $validate}.
 	 */
-	public function validate($data, $ignore = array()) {
+	public static function validate($data, $ignore = array()) {
+		
+		static::__init();
 		
 		if(!is_object($data)) throw new BadArgumentException("Model::validate() expects parameter 1 to be an object, " . gettype($data) . ' given.');
 		if(!is_array($ignore)) throw new BadArgumentException("Model::validate() expects parameter 2 to be an array, '" . gettype($ignore) . "' given.");
@@ -657,7 +681,7 @@ abstract class Model {
 		if(empty(static::p()->validate)) return true;
 		
 		$errors = array();
-		foreach($this->validate as $field => $rules) {
+		foreach(static::p()->validate as $field => $rules) {
 			foreach($rules as $rule => $args) {
 				if(is_int($rule)) $rule = $args;
 				
@@ -682,7 +706,8 @@ abstract class Model {
 					case 'numeric':
 						$pass = is_numeric($value);
 					case 'unique':
-						$pass = !(bool)$this->{'findFirstBy' . Inflector::camelize($field)}($value);
+						$function = 'findFirstBy' . Inflector::camelize($field);
+						$pass = !(bool)static::$function($value);
 						break;
 					case 'date':
 						$pass = !is_bool(strtotime(strval($value)));
@@ -700,21 +725,22 @@ abstract class Model {
 						}elseif(is_callable($args)) {
 							$callback = $args;
 							$_args = array();
-						}
+						}else throw new BadConfigurationException("Invalid callback defined in model " . static::getName());
 						$pass = (bool)call_user_func_array($callback, array($value) + $_args);
 						break;
 					case 'required':
 						$pass = !empty($value);
 						break;
 					default:
-						throw new BadConfigurationException("Invalid validation rule '$rule' defined in model " . $this->getName());
+						throw new BadConfigurationException("Invalid validation rule '$rule' defined in model " . static::getName());
 						break;
 				}
 				if(!$pass) $errors[$field][$rule] = $args;
 			}
 		}
 		
-		return empty($errors) ? true : $errors;
+		static::p()->errors = $errors;
+		return empty($errors);
 		
 	}
 	

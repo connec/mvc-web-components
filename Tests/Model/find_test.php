@@ -1,7 +1,7 @@
 <?php
 
 namespace FindTest;
-use MVCWebComponents\Model\Model, MVCWebComponents\UnitTest;
+use MVCWebComponents\Model\Model, MVCWebComponents\UnitTest\UnitTest;
 
 class User extends Model {}
 

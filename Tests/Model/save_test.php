@@ -1,7 +1,7 @@
 <?php
 
 namespace SaveTest;
-use MVCWebComponents\Model\Model, MVCWebComponents\Database\Database, MVCWebComponents\UnitTest;
+use MVCWebComponents\Model\Model, MVCWebComponents\Database\Database, MVCWebComponents\UnitTest\UnitTest;
 
 class Post extends Model {}
 
@@ -29,12 +29,6 @@ class SaveTest extends UnitTest {
 		$post->title = 'New Title';
 		$this->assertTrue(Post::save($post));
 		$this->assertEqual(Post::findFirst()->title, 'New Title');
-		
-	}
-	
-	public function postTesting() {
-		
-		return Database::query('truncate table `posts`');
 		
 	}
 	

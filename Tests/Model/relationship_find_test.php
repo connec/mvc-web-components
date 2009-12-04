@@ -1,7 +1,7 @@
 <?php
 
 namespace RelationshipFindTest;
-use MVCWebComponents\Model\Model, MVCWebComponents\Database\Database, MVCWebComponents\UnitTest;
+use MVCWebComponents\Model\Model, MVCWebComponents\Database\Database, MVCWebComponents\UnitTest\UnitTest;
 
 class User extends Model {
 	
@@ -103,13 +103,6 @@ class RelationshipFindTest extends UnitTest {
 		$this->assertEqual($posts[0]->Author, User::findFirstById(1, array('cascade' => false)));
 		$this->assertEqual($posts[1]->Author, User::findFirstById(2, array('cascade' => false)));
 		$this->assertEqual($posts[2]->Author, User::findFirstById(1, array('cascade' => false)));
-		
-	}
-	
-	public function postTesting() {
-		
-		$this->assertTrue(Database::query('truncate table `posts`'));
-		return true;
 		
 	}
 	

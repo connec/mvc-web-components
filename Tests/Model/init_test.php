@@ -1,7 +1,7 @@
 <?php
 
 namespace InitTest;
-use MVCWebComponents\Model\Model, MVCWebComponents\Model\Table, MVCWebComponents\UnitTest;
+use MVCWebComponents\Model\Model, MVCWebComponents\Model\Table, MVCWebComponents\UnitTest\UnitTest;
 
 class User extends Model {
 	

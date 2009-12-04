@@ -1,23 +1,17 @@
 <?php
 
-use MVCWebComponents\Database\Database, MVCWebComponents\UnitTest as UnitTest;
+use MVCWebComponents\Autoloader, MVCWebComponents\Database\Database, MVCWebComponents\UnitTest\TestSuite, MVCWebComponents\UnitTest\UnitTest;
 
-error_reporting(E_ALL);
+error_reporting(E_ALL | E_STRICT);
 
-include_once '../../mvc_exception.php';
-include_once '../../set.php';
-foreach(scandir('../..') as $file) {
-	if($file == '.' or $file == '..') continue;
-	
-	$file = "../../$file";
-	if(is_file($file) and end(explode('.', $file)) == 'php') include_once $file;
-}
-include_once '../../Database/database.php';
-include_once '../../Database/mysqli_driver.php';
-include_once '../../Model/model.php';
-include_once '../../Model/table.php';
+require_once '../../autoloader.php';
 
-MVCWebComponents\Database\Database::connect(
+Autoloader::addDirectory(
+	'../..', '../../Model',
+	'../../Database',
+	'../../UnitTest');
+
+Database::connect(
 	'mysqli_driver',
 	array(
 		'server' => 'localhost',
@@ -26,6 +20,17 @@ MVCWebComponents\Database\Database::connect(
 	)
 );
 
-UnitTest::runTests();
+class ModelTests extends TestSuite {
+	
+	public static function postTest() {
+		
+		static::assertTrue(Database::query("delete from `users` where `id` <> '1' and `id` <> '2'"));
+		static::assertTrue(Database::query('truncate table `posts`'));
+		
+	}
+	
+}
+
+ModelTests::runTests();
 
 ?>
