@@ -9,8 +9,6 @@
 namespace MVCWebComponents\UnitTest;
 use MVCWebComponents\MVCException, MVCWebComponents\Inflector;
 
-set_exception_handler(array('MVCWebComponents\UnitTest\TestSuite', 'handleException'));
-
 /**
  * The TestSuite class provides a mechanism for running an entire directory of tests.
  * 
@@ -18,7 +16,7 @@ set_exception_handler(array('MVCWebComponents\UnitTest\TestSuite', 'handleExcept
  * 
  * Additional functionality can be gained by extending from TestSuite, such as test preconditions.
  * 
- * @version 1.0
+ * @version 1.1
  */
 class TestSuite {
 	
@@ -60,6 +58,14 @@ class TestSuite {
 	 * @since 1.0
 	 */
 	public static $currentTest = array('test' => 'none', 'subtest' => 'none');
+	
+	/**
+	 * When set to true, runs the postTesting hook even if a test fails.
+	 * 
+	 * @var bool
+	 * @since 1.1
+	 */
+	public static $ensurePostTesting = false;
 	
 	/**
 	 * Method stub for preTesting hook.
@@ -128,6 +134,8 @@ class TestSuite {
 	 */
 	public static function runTests() {
 		
+		set_exception_handler(array(get_called_class(), 'handleException'));
+		
 		// Find our tests.
 		self::findTests();
 		
@@ -195,7 +203,7 @@ class TestSuite {
 			$name = Inflector::camelize(substr($file,0,-4));
 			$class = "$name\\$name";
 			
-			if(!class_exists($class)) throw new MVCException("Could not load test '$name' for file '$file'.  Please ensure your test is named correctly and in the correct namespace.");
+			if(!class_exists($class, false)) throw new MVCException("Could not load test '$name' for file '$file'.  Please ensure your test is named correctly and in the correct namespace.");
 			self::$tests[$name] = new $class;
 			self::$remainingTests[] = (string)self::$tests[$name];
 			if(!(self::$tests[$name] instanceof UnitTest)) throw new MVCException('Tests must extend UnitTest to be compatible with TestSuite.');
@@ -268,6 +276,12 @@ class TestSuite {
 		
 		if($exception instanceof MVCException) echo $exception->getFormattedMsg();
 		else echo str_replace("\n", '<br />', $exception->getMessage());
+		$class = static::$currentTest['test'];
+		$class = "$class\\$class";
+		if(class_exists($class,false) and static::$ensurePostTesting) {
+			static::runHook('postTest');
+			static::runHook('postTesting');
+		}
 		exit;
 		
 	}
@@ -311,7 +325,8 @@ class TestFailedException extends MVCException{
 		echo '<li>' . TestSuite::$currentTest['subtest'] . ' <span style="color: red">failed</span>.</li></ul>';
 		
 		// Set the message.
-		$this->message = TestSuite::$currentTest['test'] . '::' . TestSuite::$currentTest['subtest'] . ' failed: ' . Inflector::variablize("assert_$type") . ' - ';
+		$trace = $this->getTrace();
+		$this->message = TestSuite::$currentTest['test'] . '::' . TestSuite::$currentTest['subtest'] . ' failed: ' . Inflector::variablize("assert_$type") . " (line {$trace[1]['line']}) - ";
 		$value1 = $this->getPrintable($value1);
 		$value2 = $this->getPrintable($value2);
 		switch($type) {

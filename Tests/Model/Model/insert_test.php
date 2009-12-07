@@ -11,13 +11,13 @@ class InsertTest extends UnitTest {
 	
 	public function TestBasicInsert() {
 		
-		$post = (object)array(
+		$post = new Post(array(
 			'category_id' => 1,
 			'author_id' => 1,
 			'title' => 'Le Title',
 			'content' => 'Yo Momma',
-			'time' => time());
-		$this->assertTrue(Post::insert($post));
+			'time' => time()));
+		$this->assertTrue($post->insert());
 		$this->assertEqual(Post::findFirstById($post->id), $post);
 		
 		// Failing test: duplicate primary key
@@ -27,13 +27,13 @@ class InsertTest extends UnitTest {
 	
 	public function TestWithCrazyCharacters() {
 		
-		$post = (object)array(
+		$post = new Post(array(
 			'category_id' => 1,
 			'author_id' => 1,
 			'title' => 'Another Title',
 			'content' => "\n\0<>!?$%';SELECT * FROM `secrit`;&^\"'\'<|24ZY <><4|24<T3|2Z",
-			'time' => time());
-		$this->assertTrue(Post::insert($post));
+			'time' => time()));
+		$this->assertTrue($post->insert());
 		$this->assertEqual(Post::findFirstById($post->id), $post);
 		
 	}

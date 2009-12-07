@@ -38,12 +38,12 @@ class RelationshipSaveTest extends UnitTest {
 	public function TestHasOneInsert() {
 		
 		$user = User2::findFirst();
-		$user->Post = (object)array(
+		$user->Post = new Post2(array(
 			'category_id' => 1,
 			'title' => 'Bob\' Post!',
 			'content' => 'Content...',
-			'time' => time());
-		$this->assertTrue(User2::save($user, array('cascade' => true)));
+			'time' => time()));
+		$this->assertTrue($user->save(array('cascade' => true, 'validate' => false)));
 		$this->assertEqual($user->Post->author_id, $user->id);
 		$this->assertEqual(Post2::findFirst(array('cascade' => false)), $user->Post);
 		
@@ -53,7 +53,7 @@ class RelationshipSaveTest extends UnitTest {
 		
 		$user = User2::findFirst();
 		$user->Post->title = 'New Title!';
-		$this->assertTrue(User2::save($user, array('cascade' => true)));
+		$this->assertTrue($user->save(array('cascade' => true, 'validate' => false)));
 		$this->assertEqual(Post2::findFirst()->title, 'New Title!');
 		
 	}
@@ -61,12 +61,12 @@ class RelationshipSaveTest extends UnitTest {
 	public function TestBelongsToInsert() {
 		
 		$post = Post2::findFirst(array('cascade' => false));
-		$post->Author = (object)array(
+		$post->Author = new User2(array(
 			'name' => 'Delete',
 			'password' => 'whatever',
 			'user_group_id' => 1,
-			'joined' => time());
-		$this->assertTrue(Post2::save($post, array('cascade' => true)));
+			'joined' => time()));
+		$this->assertTrue($post->save(array('cascade' => true, 'validate' => false)));
 		$this->assertEqual($post->author_id, $post->Author->id);
 		$this->assertEqual(User2::findFirst(array('cascade' => false, 'orderBy' => 'id desc')), $post->Author);
 		
@@ -78,7 +78,7 @@ class RelationshipSaveTest extends UnitTest {
 		$post2 = Post2::findFirst();
 		unset($post2->id);
 		$post2->title = 'Updated Title';
-		$this->assertTrue(Post2::save($post2, array('cascade' => true)));
+		$this->assertTrue($post2->save(array('cascade' => true, 'validate' => false)));
 		$this->assertFalse(Post2::findFirst(array('orderBy' => 'id desc')) == Post2::findFirst());
 		$this->assertEqual(Post2::findFirst(array('orderBy' => 'id desc')), $post2);
 		$this->assertEqual(Post2::findFirst(array('orderBy' => 'id desc'))->Author->id, $post2->author_id);
@@ -94,7 +94,7 @@ class RelationshipSaveTest extends UnitTest {
 		
 		$user = User::findFirst();
 		$user->Posts = $posts;
-		$this->assertTrue(User::save($user, array('cascade' => true)));
+		$this->assertTrue($user->save(array('cascade' => true, 'validate' => false)));
 		$this->assertEqual(User::findFirst(), $user);
 		$this->assertEqual(User::findFirst()->Posts[0]->author_id, $user->id);
 		
@@ -105,7 +105,7 @@ class RelationshipSaveTest extends UnitTest {
 		$this->assertEqual($user = User::findFirst(), true);
 		$user->Posts[0]->title = 'New Title for 1st Post';
 		$user->Posts[1]->content = 'Mayhaps some new content?';
-		$this->assertTrue(User::save($user, array('cascade' => true)));
+		$this->assertTrue($user->save(array('cascade' => true, 'validate' => false)));
 		$this->assertEqual(User::findFirst()->Posts[0]->title, 'New Title for 1st Post');
 		$this->assertEqual(User::findFirst()->Posts[1]->content, 'Mayhaps some new content?');
 		

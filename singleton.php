@@ -14,7 +14,7 @@ namespace MVCWebComponents;
  * @version 1.0
  */
 
-Abstract Class Singleton {
+abstract class Singleton {
 	
 	/**
 	 * Contains an array of instances to be served on getInstance calls.

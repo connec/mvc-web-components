@@ -11,15 +11,15 @@ class DeleteTest extends UnitTest {
 	
 	public function TestDelete() {
 		
-		$post = (object)array(
+		$post = new Post(array(
 			'category_id' => 1,
 			'author_id' => 1,
 			'title' => 'Post Title',
 			'content' => 'Post Content',
-			'time' => time());
-		$this->assertTrue(Post::save($post));
+			'time' => time()));
+		$this->assertTrue($post->save(array('validate' => false)));
 		$this->assertEqual(Post::findFirst(), $post);
-		$this->assertTrue(Post::delete($post));
+		$this->assertTrue($post->delete());
 		$this->assertEqual(Post::findAll(), array());
 		
 	}

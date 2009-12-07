@@ -13,65 +13,65 @@ class CallStaticTest extends UnitTest {
 	public function TestFindAll() {
 		
 		$this->assertEqual(User::findAll(array('cascade' => false)), array(
-			(object)array(
+			new User(array(
 				'id' => 1,
 				'name' => 'Bob',
 				'password' => 'bobsnewpass',
 				'user_group_id' => 1,
-				'joined' => 1251141357),
-			(object)array(
+				'joined' => 1251141357)),
+			new User(array(
 				'id' => 2,
 				'name' => 'Jim',
 				'password' => 'jimspass',
 				'user_group_id' => 1,
-				'joined' => 1251141357)
+				'joined' => 1251141357))
 		));
 		
 	}
 	
 	public function TestFindFirst() {
 		
-		$this->assertEqual(User::findFirst(array('cascade' => false)), (object)array(
+		$this->assertEqual(User::findFirst(array('cascade' => false)), new User(array(
 			'id' => 1,
 			'name' => 'Bob',
 			'password' => 'bobsnewpass',
 			'user_group_id' => 1,
 			'joined' => 1251141357
-		));
+		)));
 		
 	}
 	
 	public function TestFindAllBy() {
 		
 		$this->assertEqual(User::findAllById(2, array('cascade' => false)), array(
-			(object)array(
+			new User(array(
 				'id' => 2,
 				'name' => 'Jim',
 				'password' => 'jimspass',
 				'user_group_id' => 1,
-				'joined' => 1251141357)
+				'joined' => 1251141357))
 		));
 		
 	}
 	
 	public function TestFindFirstBy() {
 		
-		$this->assertEqual(User::findFirstByName('Jim', array('cascade' => false)), (object)array(
+		$this->assertEqual(User::findFirstByName('Jim', array('cascade' => false)), new User(array(
 			'id' => 2,
 			'name' => 'Jim',
 			'password' => 'jimspass',
 			'user_group_id' => 1,
 			'joined' => 1251141357
-		));
+		)));
 		
 		// Test a longer-than-one-word field
-		$this->assertEqual(User::findFirstByUserGroupId(1, array('cascade' => false)), (object)array(
+		$this->assertEqual(User::findFirstByUserGroupId(1, array('cascade' => false)), new User(array(
 			'id' => 1,
 			'name' => 'Bob',
 			'password' => 'bobsnewpass',
 			'user_group_id' => 1,
 			'joined' => 1251141357
-		));
+		)));
 		
 	}
 	

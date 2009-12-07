@@ -12,7 +12,7 @@ use MVCWebComponents\Database\Database;
 /**
  * A simple class that fetches and represents the structure of a database table.
  * 
- * @version 0.2
+ * @version 0.3
  */
 class Table {
 	
@@ -101,6 +101,22 @@ class Table {
 	public function getSchema() {
 		
 		return $this->schema;
+		
+	}
+	
+	/**
+	 * Get a hash of the default fields.
+	 * 
+	 * @return array
+	 * @since 0.3
+	 */
+	public function getDefaultRecord() {
+		
+		$return = array();
+		foreach($this->schema as $field) {
+			$return[$field['Field']] = $field['Default'];
+		}
+		return $return;
 		
 	}
 	

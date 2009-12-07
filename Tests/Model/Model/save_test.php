@@ -12,13 +12,13 @@ class SaveTest extends UnitTest {
 	public function TestInsertion() {
 		
 		// Test a new record is inserted.
-		$post = (object)array(
+		$post = new Post(array(
 			'category_id' => 1,
 			'author_id' => 1,
 			'title' => 'Post 1 Title',
 			'content' => 'Post 1 content...',
-			'time' => time());
-		$this->assertTrue(Post::save($post));
+			'time' => time()));
+		$this->assertTrue($post->save(array('validate' => false)));
 		$this->assertEqual(Post::findFirst(array('cascade' => false)), $post);
 		
 	}
@@ -27,7 +27,7 @@ class SaveTest extends UnitTest {
 		
 		$this->assertEqual($post = Post::findFirst(), true);
 		$post->title = 'New Title';
-		$this->assertTrue(Post::save($post));
+		$this->assertTrue($post->save(array('validate' => false)));
 		$this->assertEqual(Post::findFirst()->title, 'New Title');
 		
 	}

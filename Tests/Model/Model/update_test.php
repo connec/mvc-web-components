@@ -12,25 +12,23 @@ class UpdateTest extends UnitTest {
 	public function preTesting() {
 		
 		// Put some posts in...
-		$this->post1 = (object)array(
+		$this->post = new Post(array(
 			'category_id' => 1,
 			'author_id' => 1,
 			'title' => 'Post 1 Title',
 			'content' => 'Post 1 Content',
-			'time' => time());
-		$this->assertTrue(Post::insert($this->post1));
-		
-		return true;
+			'time' => time()));
+		$this->assertTrue($this->post->insert());
 		
 	}
 	
 	public function TestUpdate() {
 		
-		$post1 = clone $this->post1;
-		$post1->title = 'New Post 1 Title!';
-		$this->assertTrue(Post::update($post1));
-		$this->assertFalse(Post::findFirstById($post1->id) == $this->post1);
-		$this->assertEqual(Post::findFirstById($post1->id)->title, 'New Post 1 Title!');
+		$post = clone $this->post;
+		$post->title = 'New Post 1 Title!';
+		$this->assertTrue($post->update());
+		$this->assertFalse(Post::findFirstById($post->id) == $this->post);
+		$this->assertEqual(Post::findFirstById($post->id)->title, 'New Post 1 Title!');
 		
 	}
 	

@@ -31,7 +31,7 @@ use MVCWebComponents\MVCException, MVCWebComponents\BadArgumentException, MVCWeb
  * 
  * For specific operations see the method documentations.
  * 
- * @version 0.8
+ * @version 0.9
  */
 abstract class Model extends ExtensibleStatic {
 	
@@ -123,6 +123,29 @@ abstract class Model extends ExtensibleStatic {
 	protected static $belongsTo = array();
 	
 	/**
+	 * A hash of field values for this record.
+	 * 
+	 * @var array
+	 * @since 0.9
+	 */
+	protected $fields = array();
+	
+	/**
+	 * A hash of related records.
+	 * 
+	 * @var array
+	 * @since 0.9
+	 */
+	protected $related = array();
+	
+	/**
+	 * An array of validation errors for this record.
+	 * @var array
+	 * @since 0.9
+	 */
+	public $errors = array();
+	
+	/**
 	 * Returns the (fully qualified) name of the model (class).
 	 * 
 	 * @return string The name of the model.
@@ -178,20 +201,6 @@ abstract class Model extends ExtensibleStatic {
 	}
 	
 	/**
-	 * Returns an array of validation errors from the most recent call to {@see validate()}.
-	 * 
-	 * @return array Validation errors.
-	 * @since 0.8
-	 * @see validate()
-	 */
-	public static function getErrors() {
-		
-		static::__init();
-		return isset(static::p()->errors) ? static::p()->errors : array();
-		
-	}
-	
-	/**
 	 * Returns an StdClass with all the current static values (very useful for debugging)
 	 * 
 	 * @param bool $return When true, returns the object instead of dumping it.
@@ -206,6 +215,118 @@ abstract class Model extends ExtensibleStatic {
 		
 		if(!$dump) return $return;
 		var_dump($return);
+		
+	}
+	
+	/**
+	 * Creates an instance of the model representing a record in the table.
+	 * 
+	 * @param array $fields A hash of fields and values to give the new record.  If no value is given for a field the schema default is used.
+	 * @return void
+	 * @since 0.9
+	 */
+	public function __construct($fields = array()) {
+		
+		static::__init();
+		foreach(static::getFields() as $field) if(isset($fields[$field])) $this->fields[$field] = $fields[$field];
+		
+	}
+	
+	/**
+	 * Allows accessing of record fields.
+	 * 
+	 * @param string $field The name of the field to return.
+	 * @return mixed The value of $field.
+	 * @since 0.9
+	 * @throws InvalidFieldException Thrown when attempting to access or modify a non-existant field or relation.
+	 */
+	public function &__get($field) {
+		
+		// Avoids errors about variable references.
+		$null = null;
+		
+		// Return the actual primary key value if the request is for primary_key.
+		if($field == 'primary_key') return $this->fields[static::getPrimaryKey()];
+		
+		// Check if it's a field first.
+		if(isset($this->fields[$field])) return $this->fields[$field];
+		if(in_array($field, static::getFields())) return $null;
+		
+		// Check relations...
+		if(isset(static::p()->hasOne[$field]) or isset(static::p()->hasMany[Inflector::singularize($field)]) or isset(static::p()->belongsTo[$field])) {
+			if(isset($this->related[$field])) return $this->related[$field];
+			else return $null;
+		}else throw new InvalidFieldException($field, static::p()->name);
+		
+	}
+	
+	/**
+	 * Allows setting of record fields.
+	 * 
+	 * @param string $field The name of the field to set.
+	 * @param mixed $value The value to assign.
+	 * @return void
+	 * @since 0.9
+	 * @throws InvalidFieldException Thrown when attempting to access or modify a non-existant field or relation.
+	 */
+	public function __set($field, $value) {
+		
+		// First check if it's setting the primary_key...
+		if($field == 'primary_key') return $this->fields[static::getPrimaryKey()] = $value;
+		
+		// Check fields first...
+		if(in_array($field, static::getFields())) $this->fields[$field] = $value;
+		
+		// Check the related models...
+		elseif(isset(static::p()->hasOne[$field]) or isset(static::p()->hasMany[Inflector::singularize($field)]) or isset(static::p()->belongsTo[$field])) $this->related[$field] = $value;
+		else throw new InvalidFieldException($field, static::p()->name);
+		
+	}
+	
+	/**
+	 * Extends isset() to include fields and relations.
+	 * 
+	 * @param string $field The field to check.
+	 * @return bool True if $field is a field or relation and is null, false otherwise.
+	 * @since 0.9
+	 */
+	public function __isset($field) {
+		
+		if($field == 'primary_key') return isset($this->fields[static::getPrimaryKey()]);
+		return isset($this->fields[$field]) ? true : (isset($this->related[$field]) ? true : false);
+		
+	}
+	
+	/**
+	 * Extends unset() to include fields and relations.
+	 * 
+	 * @param string $field The field to unset.
+	 * @return void
+	 * @since 0.9
+	 * @throws InvalidFieldException Thrown when attempting to access or modify a non-existant field or relation.
+	 */
+	public function __unset($field) {
+		
+		if($field == 'primary_key') unset($this->fields[static::getPrimaryKey()]);
+		elseif(in_array($field, static::getFields())) unset($this->fields[$field]);
+		elseif(isset($this->related[$field])) unset($this->related[$field]);
+		else throw new InvalidFieldException($field, static::p()->name);
+		
+	}
+	
+	/**
+	 * Returns the fields of this model as a hash.
+	 * 
+	 * @return array A hash of fields and values for this model.
+	 * @since 0.9
+	 */
+	public function getArray() {
+		
+		$return = $this->fields;
+		foreach($this->related as $field => $related) {
+			$return[$field] = $related->getArray();
+		}
+		return $return;
 		
 	}
 	
@@ -241,6 +362,7 @@ abstract class Model extends ExtensibleStatic {
 	 *      'options' => array() // Options to pass to the find() method.
 	 *   )
 	 * );
+	 * </code>
 	 * 
 	 * @return void
 	 * @since 0.8
@@ -355,7 +477,6 @@ abstract class Model extends ExtensibleStatic {
 	 * - conditions: An array of sql conditions or 'field' => 'Value' pairings to use in the where clause.
 	 * - fields: An array of fields to include in the result.  By default, all the tables fields are used.
 	 * - type: Either 'first' or 'all'.  First assumes a limit of 1 and returns that result, all returns an array of results found.
-	 * - return: The class of object to return, should be a string class name or an array of form (string className, array constructor_params).  Defaults to StdClass.
 	 * - orderBy: A field name the result should be sorted by.
 	 * - limit: The number of results the query should return.  A limit of 0 means no limit.  A limit can also be a string 'start,end' to specify the selection of results to return.
 	 * - operator: The operator ('and' or 'or') to use when combining 'field' => 'value' pairs.
@@ -376,7 +497,6 @@ abstract class Model extends ExtensibleStatic {
 			'conditions' => array(),
 			'fields' => '*',
 			'type' => 'all',
-			'return' => 'StdClass',
 			'orderBy' => '',
 			'limit' => 0,
 			'operator' => 'and',
@@ -390,8 +510,14 @@ abstract class Model extends ExtensibleStatic {
 		
 		// Execute query and store result.
 		Database::query($query);
-		if($options['type'] == 'first') $return = Database::getRow($options['return']);
-		else $return = Database::getAll($options['return']);
+		$class = static::getName();
+		if($options['type'] == 'first') {
+			$return = Database::getRow('array');
+			if($return) $return = new $class($return);
+		}else {
+			$return = Database::getAll('array');
+			if(!empty($return)) $return = array_map(function($row) use($class) {return new $class($row);}, $return);
+		}
 		
 		// Relate the result if in the options.
 		if($options['cascade']) static::findRelated($return, $options['processed']);
@@ -488,22 +614,17 @@ abstract class Model extends ExtensibleStatic {
 	}
 	
 	/**
-	 * Inserts the data described by $data into the database.  Also updates the primary key with {@link getInsertId()}.  $data should be in the same format as returned by {@link find()} (object of field->value pairs).
+	 * Inserts this record into the database.  Also updates the primary key with {@link Database::getInsertId()}.
 	 * 
-	 * @param object $data An array or object of data.
 	 * @return bool True on success, false on failure.
 	 * @since 0.1
 	 * @throws BadArgumentException Thrown when $data is not an object.
 	 */
-	public static function insert(&$data) {
-		
-		static::__init();
-		
-		if(!is_object($data)) throw new BadArgumentException("Model::insert() requires an object as input.");
+	public function insert() {
 		
 		$fields = array();
 		$values = array();
-		foreach($data as $field => $value) {
+		foreach($this->fields as $field => $value) {
 			if(!in_array($field, static::getFields())) continue;
 			$fields[] = "`$field`";
 			$values[] = "'" . Database::escape($value) . "'";
@@ -511,7 +632,7 @@ abstract class Model extends ExtensibleStatic {
 		
 		$query = 'insert into `' . static::getTableName() . "` (" . implode(', ', $fields) . ') values (' . implode(', ', $values) . ')';
 		if(Database::query($query)) {
-			if(Database::getInsertId()) $data->{static::getPrimaryKey()} = Database::getInsertId();
+			if(Database::getInsertId()) $this->primary_key = Database::getInsertId();
 			return true;
 		}else return false;
 		
@@ -520,24 +641,20 @@ abstract class Model extends ExtensibleStatic {
 	/**
 	 * Updates a record in the database.
 	 * 
-	 * Updates the record in database, identified by the primary key in $data, with the other values in $data.
+	 * Updates the record in database, identified by the primary key, with the other values in the record.
 	 * 
-	 * @param object $data The updated record.
 	 * @return bool True on success, false on failure.
 	 * @since 0.1
 	 * @throws BadArgumentException Thrown when $data is not an object or does not contain a value for the primary key.
 	 */
-	public static function update($data) {
+	public function update() {
 		
-		static::__init();
+		if(!isset($this->primary_key)) throw new BadArgumentException("Model::update() requires the supplied data to include the primary key of the item to update.");
 		
-		if(!is_object($data)) throw new BadArgumentException("Model::update() requires an object as input.");
-		if(!isset($data->{static::getPrimaryKey()})) throw new BadArgumentException("Model::update() requires the supplied data to include the primary key of the item to update.");
-		
-		$primaryKey = $data->{static::getPrimaryKey()};
+		$primaryKey = $this->primary_key;
 		$updates = array();
-		foreach($data as $field => $value) {
-			if(!in_array($field, static::getFields()) or $field == static::getPrimaryKey()) continue;
+		foreach($this->fields as $field => $value) {
+			if($field == static::getPrimaryKey()) continue;
 			$updates[] = "`$field` = '" . Database::escape($value) . "'";
 		}
 		
@@ -547,59 +664,55 @@ abstract class Model extends ExtensibleStatic {
 	}
 	
 	/**
-	 * Updates or inserts the given record depending on its content.
+	 * Updates or inserts this record depending on its content.
 	 * 
-	 * Either updates or inserts the record described by $data depending on whether or not the primary key is in the data and whether or not it is unique in the table.
+	 * Either updates or inserts this record depending on whether or not the primary key is in the data and whether or not it is unique in the table.
 	 * 
 	 * Options keys are:
-	 * - cascade: Whether or not to also save related rows in $data.
+	 * - cascade: Whether or not to also save related rows.
 	 * - validate: Whether or not to validate the data before saving it.  If validation fails the save will cancel and return false.
 	 * 
-	 * @param object $data The data to save.
 	 * @param array $options Array of options for the save.
 	 * @return bool True on success, false on failure.
 	 * @since 0.1
 	 * @throws BadArgumentException Thrown when $data is not an object or $options is not an array.
 	 */
-	public static function save(&$data, $options = array()) {
+	public function save($options = array()) {
 		
-		static::__init();
-		
-		if(!is_object($data)) throw new BadArgumentException("Model::save() expects parameter 1 to be an object, '" . gettype($data) . "' given.");
-		if(!is_array($options)) throw new BadArgumentException("Model::save() expected parameter 2 to be an array, '" . gettype($options) . "' given.");
+		if(!is_array($options)) throw new BadArgumentException("Model::save() expected parameter 1 to be an array, '" . gettype($options) . "' given.");
 		if(!isset($options['cascade'])) $options['cascade'] = false;
 		if(!isset($options['validate'])) $options['validate'] = true;
 		$return = array();
 		
 		if($options['cascade']) {
 			foreach(static::p()->belongsTo as $alias => $relation) {
-				if(!isset($data->{$alias})) continue;
-				$return[] = $relation['model']::save($data->{$alias}, $options);
-				$data->{$relation['foreignKey']} = $data->{$alias}->{$relation['model']::getPrimaryKey()};
+				if(!isset($this->$alias)) continue;
+				$return[] = $this->$alias->save($options);
+				$this->{$relation['foreignKey']} = $this->$alias->primary_key;
 			}
 		}
 		
 		$idFunction = 'findFirstBy' . Inflector::camelize(static::getPrimaryKey());
-		if(!isset($data->{static::getPrimaryKey()})) $function = 'insert';
-		elseif(!static::$idFunction($data->{static::getPrimaryKey()})) $function = 'insert';
+		if(!isset($this->primary_key)) $function = 'insert';
+		elseif(!static::$idFunction($this->primary_key)) $function = 'insert';
 		else $function = 'update';
 		
 		if($options['validate']) if(static::validate($data) !== true) return false;
-		$return[] = static::$function($data);
+		$return[] = $this->$function();
 		
 		if($options['cascade']) {
 			foreach(static::p()->hasMany as $alias => $relation) {
 				$alias = Inflector::pluralize($alias);
-				if(!isset($data->{$alias})) continue;
-				foreach($data->{$alias} as &$_data) {
-					$_data->{$relation['foreignKey']} = $data->{static::getPrimaryKey()};
-					$return[] = $relation['model']::save($_data, $options);
+				if(!isset($this->$alias)) continue;
+				foreach($this->$alias as &$data) {
+					$data->{$relation['foreignKey']} = $this->primary_key;
+					$return[] = $data->save($options);
 				}
 			}
 			foreach(static::p()->hasOne as $alias => $relation) {
-				if(!isset($data->{$alias})) continue;
-				$data->{$alias}->{$relation['foreignKey']} = $data->{static::getPrimaryKey()};
-				$return[] = $relation['model']::save($data->{$alias}, $options);
+				if(!isset($this->$alias)) continue;
+				$this->$alias->{$relation['foreignKey']} = $this->primary_key;
+				$return[] = $this->$alias->save($options);
 			}
 		}
 		
@@ -608,22 +721,16 @@ abstract class Model extends ExtensibleStatic {
 	}
 	
 	/**
-	 * Deletes the record described by $data from the database.
+	 * Deletes this record from the database.
 	 * 
-	 * @param mixed $data The record to delete.
 	 * @return bool True on success, false on failure.
 	 * @since 0.1
 	 * @throws BadArgumentException Thrown when $data is not an object or it does not contain a value for the primary key.
 	 */
-	public static function delete($data) {
+	public function delete() {
 		
-		static::__init();
-		
-		if(!is_object($data)) throw new BadArgumentException("Model::delete() requires an array or object as input.");
-		if(!isset($data->{static::getPrimaryKey()})) throw new BadArgumentException("Model::delete() requires the supplied data to include the primary key of the item to update.");
-		
-		$primaryKey = $data->{static::getPrimaryKey()};
-		$query = 'delete from `' . static::getTableName() .'` where `' . static::getPrimaryKey() . "` = '$primaryKey' limit 1";
+		if(!isset($this->primary_key)) throw new BadArgumentException("Model::delete() requires the supplied data to include the primary key of the item to update.");
+		$query = 'delete from `' . static::getTableName() .'` where `' . static::getPrimaryKey() . "` = '$this->primary_key' limit 1";
 		return Database::query($query);
 		
 	}
@@ -639,11 +746,8 @@ abstract class Model extends ExtensibleStatic {
 	 * @throws BadArgumentException Thrown when $data is not an object or $ignore is not an array.
 	 * @throws BadConfigurationException Thrown when an invalid rule is encountered in {@link $validate}.
 	 */
-	public static function validate($data, $ignore = array()) {
+	public function validate($ignore = array()) {
 		
-		static::__init();
-		
-		if(!is_object($data)) throw new BadArgumentException("Model::validate() expects parameter 1 to be an object, " . gettype($data) . ' given.');
 		if(!is_array($ignore)) throw new BadArgumentException("Model::validate() expects parameter 2 to be an array, '" . gettype($ignore) . "' given.");
 		
 		if(empty(static::p()->validate)) return true;
@@ -656,10 +760,10 @@ abstract class Model extends ExtensibleStatic {
 				if(isset($ignore[$field]) and is_array($ignore[$field]) and in_array($rule, $ignore[$field])) continue;
 				if(isset($ignore['all']) and is_array($ignore['all']) and in_array($rule, $ignore['all'])) continue;
 				
-				if(!isset($data->{$field})) {
+				if(!isset($this->$field)) {
 					if($rule == 'required') $errors[$field][$rule] = $rule;
 					continue;
-				}else $value = $data->{$field};
+				}else $value = $this->$field;
 				
 				switch($rule) {
 					case 'minlength':
@@ -707,7 +811,7 @@ abstract class Model extends ExtensibleStatic {
 			}
 		}
 		
-		static::p()->errors = $errors;
+		$this->errors = $errors;
 		return empty($errors);
 		
 	}
@@ -723,5 +827,28 @@ abstract class Model extends ExtensibleStatic {
  * @version 0.1
  */
 class BadConfigurationException extends MVCException {}
+
+/**
+ * An exception thrown when attempting to set or get an invalid field.
+ * 
+ * @subpackage exceptions
+ * @version 1.0
+ */
+class InvalidFieldException extends MVCException {
+	
+	/**
+	 * Set the message.
+	 * 
+	 * @param string $field The invalid field name.
+	 * @return void
+	 * @since 1.0
+	 */
+	public function __construct($field, $model) {
+		
+		$this->message = "Attempted to access invalid field '$field' for model '$model'.";
+		
+	}
+	
+}
 
 ?>
