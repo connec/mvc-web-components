@@ -287,7 +287,7 @@ abstract class Model extends ExtensibleStatic {
 	 * Extends isset() to include fields and relations.
 	 * 
 	 * @param string $field The field to check.
-	 * @return bool True if $field is a field or relation and is null, false otherwise.
+	 * @return bool True if $field is a field or relation and isn't null, false otherwise.
 	 * @since 0.9
 	 */
 	public function __isset($field) {
@@ -315,7 +315,7 @@ abstract class Model extends ExtensibleStatic {
 	}
 	
 	/**
-	 * Returns the fields of this model as a hash.
+	 * Returns the fields of this record as a hash.
 	 * 
 	 * @return array A hash of fields and values for this model.
 	 * @since 0.9
@@ -324,7 +324,12 @@ abstract class Model extends ExtensibleStatic {
 		
 		$return = $this->fields;
 		foreach($this->related as $field => $related) {
-			$return[$field] = $related->getArray();
+			if(is_array($related)) {
+				$return[$field] = array();
+				foreach($related as $record) {
+					$return[$field][] = $record->getArray();
+				}
+			}else $return[$field] = $related->getArray();
 		}
 		return $return;
 		
@@ -335,7 +340,6 @@ abstract class Model extends ExtensibleStatic {
 	 * 
 	 * @return void
 	 * @since 0.8
-	 * @throws BadConfigurationException Thrown when an invalid relationship definition is encountered.
 	 */
 	public static function __init() {
 		
@@ -366,6 +370,7 @@ abstract class Model extends ExtensibleStatic {
 	 * 
 	 * @return void
 	 * @since 0.8
+	 * @throws BadConfigurationException Thrown when an invalid relationship configuration is found.
 	 */
 	protected static function normalizeRelations() {
 		
@@ -514,13 +519,14 @@ abstract class Model extends ExtensibleStatic {
 		if($options['type'] == 'first') {
 			$return = Database::getRow('array');
 			if($return) $return = new $class($return);
+			else $return = null;
 		}else {
 			$return = Database::getAll('array');
 			if(!empty($return)) $return = array_map(function($row) use($class) {return new $class($row);}, $return);
 		}
 		
 		// Relate the result if in the options.
-		if($options['cascade']) static::findRelated($return, $options['processed']);
+		if($return and $options['cascade']) static::findRelated($return, $options['processed']);
 		
 		// Return it.
 		return $return;
@@ -606,7 +612,7 @@ abstract class Model extends ExtensibleStatic {
 					
 					if($relationType == 'hasMany') $alias = Inflector::pluralize($alias);
 					
-					$result->{$alias} = $relation['model']::find($relation['options']);
+					$result->$alias = $relation['model']::find($relation['options']);
 				}
 			}
 		}else throw new BadArgumentException('Model::findRelated() expects parameter 1 to be object or array, \'' . gettype($result) . '\' given.');
@@ -738,17 +744,16 @@ abstract class Model extends ExtensibleStatic {
 	/**
 	 * Validates some data with the rules defined in the model.
 	 * 
-	 * @param mixed $data The data to be validated, either object or array.
 	 * @param array $ignore An array of rules to ignore.
 	 * @return mixed True if data validates successfully, an array of errors otherwise.
 	 * @see $validate
 	 * @since 0.2
-	 * @throws BadArgumentException Thrown when $data is not an object or $ignore is not an array.
+	 * @throws BadArgumentException Thrown when $ignore is not an array.
 	 * @throws BadConfigurationException Thrown when an invalid rule is encountered in {@link $validate}.
 	 */
 	public function validate($ignore = array()) {
 		
-		if(!is_array($ignore)) throw new BadArgumentException("Model::validate() expects parameter 2 to be an array, '" . gettype($ignore) . "' given.");
+		if(!is_array($ignore)) throw new BadArgumentException("Model::validate() expects parameter 1 to be an array, '" . gettype($ignore) . "' given.");
 		
 		if(empty(static::p()->validate)) return true;
 		
