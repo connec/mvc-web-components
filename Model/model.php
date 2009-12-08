@@ -559,22 +559,22 @@ abstract class Model extends ExtensibleStatic {
 					$operator = '=';
 					$value = "'" . Database::escape($value) . "'";
 				}
-				$options['conditions'][] = "`" . static::getName() . "`.`$key` $operator $value";
+				$options['conditions'][] = "`" . static::p()->name . "`.`$key` $operator $value";
 				unset($options['conditions'][$key]);
 			}
 		}
 		
 		// Sort out the 'fields' options.
-		if(is_array($options['fields'])) $options['fields'] = "`" . static::getName() . "`.`" . implode("`,`" . static::getName() . "`.`", $options['fields']) . '`';
+		if(is_array($options['fields'])) $options['fields'] = "`" . static::p()->name . "`.`" . implode("`,`" . static::p()->name . "`.`", $options['fields']) . '`';
 		
 		// Start building the query.
-		$query = 'select ' . $options['fields'] . ' from `' . static::getTableName() . "` as `" . static::getName() . "` where " . (implode(' ' . $options['operator'] . ' ', $options['conditions']) ?: '1');
+		$query = 'select ' . $options['fields'] . ' from `' . static::getTableName() . "` as `" . static::p()->name . "` where " . (implode(' ' . $options['operator'] . ' ', $options['conditions']) ?: '1');
 		
 		// Append the other options.
 		if($options['orderBy']) {
 			@list($field, $dir) = explode(' ', $options['orderBy']);
 			if($dir != 'asc' and $dir != 'desc') $dir = 'asc';
-			$query .= " order by `" . static::getName() . "`.`$field` $dir";
+			$query .= " order by `" . static::p()->name . "`.`$field` $dir";
 		}
 		if($options['limit']) $query .= ' limit ' . $options['limit'];
 		
