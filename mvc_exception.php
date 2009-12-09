@@ -40,7 +40,7 @@ Class MVCException extends \Exception {
 	 */
 	public function getFormattedMsg() {
 		
-		$type = get_class($this);
+		$type = @end(explode('\\', get_class($this)));
 		$output = '<pre class="' . self::$elementClasses['wrapper'] . '">';
 		$output .= '<h1 class="' . self::$elementClasses['heading'] . "\">Unhandled Exception <i>$type</i></h1>";
 		$output .= '<p class="' . self::$elementClasses['message'] . '">' . $this->getMessage() . ' - Code: ' . $this->getCode() . '<br/>';

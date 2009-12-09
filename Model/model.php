@@ -31,7 +31,7 @@ use MVCWebComponents\MVCException, MVCWebComponents\BadArgumentException, MVCWeb
  * 
  * For specific operations see the method documentations.
  * 
- * @version 0.9
+ * @version 0.9.1
  */
 abstract class Model extends ExtensibleStatic {
 	
@@ -110,7 +110,7 @@ abstract class Model extends ExtensibleStatic {
 	protected static $hasMany = array();
 	
 	/**
-	 * Described 'belongs to' relationships.
+	 * Describes 'belongs to' relationships.
 	 * 
 	 * Describes relationships with other models where the 'foreign key' in this model equals the primary key of the other model.  Limited to one match.
 	 * 
@@ -121,6 +121,38 @@ abstract class Model extends ExtensibleStatic {
 	 * @see $hasOne, $hasMany, find()
 	 */
 	protected static $belongsTo = array();
+	
+	/**
+	 * An array of method names to execute before record construction.
+	 * 
+	 * @var array
+	 * @since 0.9.1
+	 */
+	protected static $beforeConstruct = array();
+	
+	/**
+	 * An array of method names to execute after record construction.
+	 * 
+	 * @var array
+	 * @since 0.9.1
+	 */
+	protected static $afterConstruct = array();
+	
+	/**
+	 * An array of method names to execute before saving a record.
+	 * 
+	 * @var array
+	 * @since 0.9.1
+	 */
+	protected static $beforeSave = array();
+	
+	/**
+	 * An array of method names to execute after saving a record.
+	 * 
+	 * @var array
+	 * @since 0.9.1
+	 */
+	protected static $afterSave = array();
 	
 	/**
 	 * A hash of field values for this record.
@@ -201,6 +233,32 @@ abstract class Model extends ExtensibleStatic {
 	}
 	
 	/**
+	 * Runs any hooks named under $name.
+	 * 
+	 * @param string $name The name of the hook to run.
+	 * @param bool $required If set to true an exception will be raised if no methods are defined under $name.
+	 * @return bool The reduced value of the return values of the hook methods.  Returns true if all hooks return true, false otherwise.
+	 * @throws BadConfigurationException Thrown when a non-existant method is encountered.
+	 * @throws BadArgumentException Thrown when the provided $name is not a valid hook.
+	 * @since 0.9.1
+	 */
+	public function runHook($name, $required = false) {
+		
+		if(!isset(static::$$name)) throw new BadArgumentException("Invalid hook name '$name' given to " . static::getName() . "::runHook(), see documentation for valid hooks.");
+		if(!empty(static::$$name)) {
+			$return = array();
+			foreach(static::$$name as $method) {
+				if(method_exists($this, $method)) $return[] = $this->$method();
+				else throw new BadConfigurationException("Model '" . static::getName() . "' contains a bad method '$method' for hook '$name'.  Ensure the method exists.");
+			}
+			return array_reduce($return, function($a, $b) {return $a and $b;}, true);
+		}
+		if($required) throw new MVCException("No methods found for required hook '$name' in " . static::getName() . ".");
+		else return true;
+		
+	}
+	
+	/**
 	 * Returns an StdClass with all the current static values (very useful for debugging)
 	 * 
 	 * @param bool $return When true, returns the object instead of dumping it.
@@ -228,7 +286,10 @@ abstract class Model extends ExtensibleStatic {
 	public function __construct($fields = array()) {
 		
 		static::__init();
+		$this->fields = static::p()->table->getDefaultRecord();
+		$this->runHook('beforeConstruct');
 		foreach(static::getFields() as $field) if(isset($fields[$field])) $this->fields[$field] = $fields[$field];
+		$this->runHook('afterConstruct');
 		
 	}
 	
@@ -272,10 +333,10 @@ abstract class Model extends ExtensibleStatic {
 	public function __set($field, $value) {
 		
 		// First check if it's setting the primary_key...
-		if($field == 'primary_key') return $this->fields[static::getPrimaryKey()] = $value;
+		if($field == 'primary_key') $this->fields[static::getPrimaryKey()] = $value;
 		
 		// Check fields first...
-		if(in_array($field, static::getFields())) $this->fields[$field] = $value;
+		elseif(in_array($field, static::getFields())) $this->fields[$field] = $value;
 		
 		// Check the related models...
 		elseif(isset(static::p()->hasOne[$field]) or isset(static::p()->hasMany[Inflector::singularize($field)]) or isset(static::p()->belongsTo[$field])) $this->related[$field] = $value;
@@ -349,7 +410,7 @@ abstract class Model extends ExtensibleStatic {
 		// Store the model name (sans namespace) in the metadata.
 		static::p()->name = @end(explode('\\', static::getName()));
 		static::p()->tableName = static::$tableName ?: Inflector::tableize(static::p()->name);
-		static::p()->table = Table::getInstance(static::p()->tableName);
+		static::p()->table = Table::instance(static::p()->tableName);
 		static::p()->validate = static::$validate ?: array();
 		
 		static::normalizeRelations();
@@ -374,11 +435,11 @@ abstract class Model extends ExtensibleStatic {
 	 */
 	protected static function normalizeRelations() {
 		
-		static::properties()->hasOne = static::$hasOne;
-		static::properties()->hasMany = static::$hasMany;
-		static::properties()->belongsTo = static::$belongsTo;
+		static::p()->hasOne = static::$hasOne;
+		static::p()->hasMany = static::$hasMany;
+		static::p()->belongsTo = static::$belongsTo;
 		
-		$relationConfig = array('hasOne' => &static::properties()->hasOne, 'hasMany' => &static::properties()->hasMany, 'belongsTo' => &static::properties()->belongsTo);
+		$relationConfig = array('hasOne' => &static::p()->hasOne, 'hasMany' => &static::p()->hasMany, 'belongsTo' => &static::p()->belongsTo);
 		foreach($relationConfig as $relationType => &$relations) {
 			foreach($relations as $index => &$relation) {
 				if(is_int($index) and is_string($relation)) {
@@ -402,7 +463,7 @@ abstract class Model extends ExtensibleStatic {
 					$relation['model']::getName();
 				}
 				
-				$key = Inflector::underscore(static::properties()->name) . '_' . static::getPrimaryKey();
+				$key = Inflector::underscore(static::p()->name) . '_' . static::getPrimaryKey();
 				if($relationType == 'belongsTo') $key = Inflector::underscore($alias) . '_' . $relation['model']::getPrimaryKey();
 				if(isset($relation['foreignKey'])) $key = $relation['foreignKey'];
 				else $relation['foreignKey'] = $key;
@@ -690,6 +751,8 @@ abstract class Model extends ExtensibleStatic {
 		if(!isset($options['validate'])) $options['validate'] = true;
 		$return = array();
 		
+		$this->runHook('beforeSave');
+		
 		if($options['cascade']) {
 			foreach(static::p()->belongsTo as $alias => $relation) {
 				if(!isset($this->$alias)) continue;
@@ -703,7 +766,7 @@ abstract class Model extends ExtensibleStatic {
 		elseif(!static::$idFunction($this->primary_key)) $function = 'insert';
 		else $function = 'update';
 		
-		if($options['validate']) if(static::validate($data) !== true) return false;
+		if($options['validate']) if($this->validate() !== true) return false;
 		$return[] = $this->$function();
 		
 		if($options['cascade']) {
@@ -721,6 +784,8 @@ abstract class Model extends ExtensibleStatic {
 				$return[] = $this->$alias->save($options);
 			}
 		}
+		
+		$this->runHook('afterSave');
 		
 		return array_reduce($return, function($a,$b){return $a and $b;}, true);
 		

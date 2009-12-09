@@ -114,6 +114,7 @@ class Table {
 		
 		$return = array();
 		foreach($this->schema as $field) {
+			if($field['Field'] == $this->getPrimaryKey()) continue;
 			$return[$field['Field']] = $field['Default'];
 		}
 		return $return;
@@ -127,7 +128,7 @@ class Table {
 	 * @return &object The table instance, by reference.
 	 * @since 0.1
 	 */
-	public static function &getInstance($tableName) {
+	public static function &instance($tableName) {
 		
 		if(!isset(self::$tables[$tableName])) self::$tables[$tableName] = new Table($tableName);
 		return self::$tables[$tableName];
