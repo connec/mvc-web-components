@@ -99,7 +99,7 @@ Class View {
 	 */
 	public function __set($var, $value) {
 		
-		if(!in_array($var, get_class_vars('View'))) {
+		if(!in_array($var, get_class_vars(get_class($this)))) {
 			$this->register[$var] = $value;
 		}else {
 			$this->{$var} = $value;
@@ -116,7 +116,7 @@ Class View {
 	 */
 	public function __get($var) {
 		
-		if(!in_array($var, get_class_vars('View'))) {
+		if(!in_array($var, get_class_vars(get_class($this)))) {
 			return $this->register[$var];
 		}else {
 			return $this->{$var};

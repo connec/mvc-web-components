@@ -307,7 +307,7 @@ Class InvalidDriverException extends MVCException {
  * @subpackage exceptions
  * @version 1.0
  */
-Class DatabaseConnectionExcepion extends MVCException {
+Class DatabaseConnectionException extends MVCException {
 	
 	/**
 	 * Assigns the message.

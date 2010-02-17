@@ -692,7 +692,7 @@ abstract class Model extends ExtensibleStatic {
 		$fields = array();
 		$values = array();
 		foreach($this->fields as $field => $value) {
-			if(!in_array($field, static::getFields())) continue;
+			if(!in_array($field, static::getFields()) or $this->fields[$field] === null) continue;
 			$fields[] = "`$field`";
 			$values[] = "'" . Database::escape($value) . "'";
 		}
@@ -847,6 +847,7 @@ abstract class Model extends ExtensibleStatic {
 						break;
 					case 'numeric':
 						$pass = is_numeric($value);
+						break;
 					case 'unique':
 						$function = 'findFirstBy' . Inflector::camelize($field);
 						$pass = !(bool)static::$function($value);
