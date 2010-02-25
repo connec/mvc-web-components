@@ -17,7 +17,7 @@ use \MVCWebComponents\BadArgumentException;
  *
  * @version 1.2
  */
-Class Database {
+class Database {
 	
 	/**
 	 * An instance of the database driver being used.
@@ -282,7 +282,7 @@ Class Database {
  * @subpackage exceptions
  * @version 1.0
  */
-Class InvalidDriverException extends MVCException {
+class InvalidDriverException extends MVCException {
 	
 	/**
 	 * Assigns the message.
@@ -307,7 +307,7 @@ Class InvalidDriverException extends MVCException {
  * @subpackage exceptions
  * @version 1.0
  */
-Class DatabaseConnectionException extends MVCException {
+class DatabaseConnectionException extends MVCException {
 	
 	/**
 	 * Assigns the message.
@@ -359,7 +359,7 @@ class BadQueryException extends MVCException {
  * @subpackage exceptions
  * @version 1.0
  */
-Class NoConnectionException extends MVCException {
+class NoConnectionException extends MVCException {
 	
 	/**
 	 * Assigns the message.
@@ -384,7 +384,7 @@ Class NoConnectionException extends MVCException {
  * @version 1.1
  */
 
-Interface DatabaseDriverInterface {
+interface DatabaseDriverInterface {
 	
 	/**
 	 * Connects to the database and selects a database.

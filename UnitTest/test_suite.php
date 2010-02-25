@@ -136,6 +136,8 @@ class TestSuite {
 		
 		set_exception_handler(array(get_called_class(), 'handleException'));
 		
+		echo '<head><title>' . get_called_class() . '</title></head>';
+		
 		// Find our tests.
 		self::findTests();
 		

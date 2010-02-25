@@ -43,6 +43,7 @@ class HookTest extends UnitTest {
 			'title' => 'Post Title',
 			'content' => 'Post Content'));
 		$post->save();
+		$this->assertStrict($post->time, time());
 		
 	}
 	

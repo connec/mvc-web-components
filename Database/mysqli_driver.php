@@ -8,7 +8,7 @@
  * @author Chris Connelly
  */
 namespace MVCWebComponents\Database;
-use MVCWebComponents\MVCException, MySQLi, MySQLi_Result;
+use MVCWebComponents\MVCException, MVCWebComponents\BadArgumentException, MySQLi, MySQLi_Result;
 
 /**
  * Mysqli database driver.
@@ -64,7 +64,7 @@ Class MysqliDriver implements DatabaseDriverInterface {
 		
 		$this->mysqli = new MySQLi($params['server'], $params['user'], $params['password'], $params['database']);
 		
-		if(!$this->mysqli or $this->mysqli->connect_error) return false;
+		if(!$this->mysqli or $this->mysqli->connect_error) throw new DatabaseConnectionException('MysqliDriver', $this->mysqli->connect_error);
 		return true;
 	}
 	
@@ -78,7 +78,7 @@ Class MysqliDriver implements DatabaseDriverInterface {
 	public function query($sql) {
 		
 		if($this->result instanceof MySQLi_Result) $this->result->free();
-		return $this->result = $this->mysqli->query($sql);
+		return (bool) ($this->result = $this->mysqli->query($sql));
 		
 	}
 	
