@@ -6,9 +6,9 @@
  * @author Chris Connelly
  */
 namespace MVCWebComponents\Database;
-use \MVCWebComponents\Inflector;
-use \MVCWebComponents\MVCException;
-use \MVCWebComponents\BadArgumentException;
+use \MVCWebComponents\Inflector,
+	\MVCWebComponents\MVCException,
+	\MVCWebComponents\BadArgumentException;
 
 /**
  * Access point for database operations.

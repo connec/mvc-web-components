@@ -7,7 +7,8 @@
  * @author Chris Connelly
  */
 namespace MVCWebComponents;
-use MVCWebComponents\Inflector, MVCWebComponents\MVCException;
+use MVCWebComponents\Inflector,
+	MVCWebComponents\MVCException;
 
 /**
  * Require the Inflector class and mvc_exception class as it's needed in the autoloader.

@@ -7,7 +7,11 @@
  * @author Chris Connelly
  */
 namespace MVCWebComponents\Model;
-use MVCWebComponents\MVCException, MVCWebComponents\BadArgumentException, MVCWebComponents\Inflector, MVCWebComponents\Database\Database, MVCWebComponents\ExtensibleStatic;
+use MVCWebComponents\MVCException,
+	MVCWebComponents\BadArgumentException,
+	MVCWebComponents\Inflector,
+	MVCWebComponents\Database\Database,
+	MVCWebComponents\ExtensibleStatic;
 
 /**
  * The Model class is an extensible class to allow 'zero configuration' CRUD + extras database interaction.

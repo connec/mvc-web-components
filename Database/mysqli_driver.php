@@ -8,7 +8,10 @@
  * @author Chris Connelly
  */
 namespace MVCWebComponents\Database;
-use MVCWebComponents\MVCException, MVCWebComponents\BadArgumentException, MySQLi, MySQLi_Result;
+use MVCWebComponents\MVCException,
+	MVCWebComponents\BadArgumentException,
+	MySQLi,
+	MySQLi_Result;
 
 /**
  * Mysqli database driver.
