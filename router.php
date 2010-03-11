@@ -12,7 +12,7 @@ use MVCWebComponents\MVCException;
 /**
  * Gets an array of parameters from an input URL using defined patterns.
  * 
- * @version 1.0
+ * @version 1.1
  */
 Class Router {
 	
@@ -41,6 +41,12 @@ Class Router {
 	 * @since 1.0
 	 */
 	public static function connect($urlPattern, $parameters) {
+		
+		// Handle multiple urlPatterns.
+		if(is_array($urlPattern)) {
+			foreach($urlPattern as $p) static::connect($p, $parameters);
+			return;
+		}
 		
 		// Check $urlPattern uses valid 'connection syntax'.
 		$validUrlPattern = '#(?:/[a-z0-9_*:]+)+|/#i';

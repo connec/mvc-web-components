@@ -11,156 +11,153 @@ namespace MVCWebComponents;
 /**
  * Provides functions for using dot paths.
  * 
- * Extensible, static class for reading and writing to an array/object (objects are read-only) using a 'dot path' such as 'user.name' etc.
+ * Extensible, static class for reading and writing to an array (or ArrayAccess-able object) using a 'dot path' such as 'user.name' etc.
  * 
- * @version 1.0
+ * @version 1.1
  */
 
-Class Set {
+abstract class Set extends ExtensibleStatic {
 	
 	/**
-	 * Writes $value to the key in $array specified by $path.
-	 *
-	 * @param array $array An array to write to.
-	 * @param string $path The 'dot path' to the key to write to.
-	 * @param mixed $value The data to write to $path in $array.
-	 * @return bool True on success, false on failure.
-	 * @since 1.0
+	 * Initialize the registry variable.
+	 * 
+	 * @return void
+	 * @since 1.1
 	 */
-	public static function writePath(&$array, $path, $value) {
+	protected static function setInit() {
 		
-		if(!is_array($path)) {
-			$path = explode('.', $path);
-		}
-		
-		$_array = &$array;
-		
-		foreach($path as $i => $key) {
-			if(is_numeric($key) and intval($key) > 0 or $key == '0') {
-				$key = intval($key);
-			}
-			if($i == count($path) - 1) {
-				$_array[$key] = $value;
-				return true;
-			}else {
-				if(!isset($_array[$key])) {
-					$_array[$key] = array();
-				}
-				$_array =& $_array[$key];
-			}
-		}
-		
-		return false;
+		parent::__init();
+		if(!isset(static::p()->register)) static::p()->register = array();
 		
 	}
 	
 	/**
-	 * Returns the value in $array represented by $path.
-	 *
-	 * @param mixed $array The array (or object) to read from.
-	 * @param string $path The path to the key in $array to read from.
-	 * @return mixed The data stored in $array represented by $path.
-	 * @since 1.0
+	 * Writes $value to the key specified by $path.
+	 * 
+	 * @param string $path The path to the key to write to.
+	 * @param mixed $value The value to write.
+	 * @return void
+	 * @since 1.1
 	 */
-	public static function readPath($array, $path) {
+	public static function write($path, $value) {
 		
-		if(!is_array($path)) {
-			$path = explode('.', $path);
-		}
-		if(is_numeric($path[0]) and intval($path[0]) >= 0) {
-			$path[0] = intval($path[0]);
-		}
+		static::setInit();
 		
-		if(count($path) == 1) {
-			if(is_array($array))
-				return $array[$path[0]];
-			else
-				return $array->{$path[0]};
-		}else {
-			if(isset($array[$path[0]])) {
-				return Set::read($array[array_shift($path)], $path);
-			}elseif(!empty($array->{$path[0]})) {
-				array_shift($path);
-				return Set::read($array{$path[0]}, $path);
-			}else {
-				return null;
+		$a =& static::p()->register;
+		$path = explode('.', $path);
+		while($key = array_shift($path)) {
+			if(is_numeric($key) and intval($key) >= 0) $key = intval($key);
+			if(empty($path)) $a[$key] = $value;
+			else {
+				if(!isset($a[$key])) $a[$key] = array();
+				$a =& $a[$key];
 			}
 		}
 		
 	}
 	
 	/**
-	 * Clears the key in $array represented by $path.
-	 *
-	 * @param mixed $array The array to clear from.
-	 * @param string $path The path to the key in $array to clear.
-	 * @return array The array with the result cleared.
-	 * @since 1.0
+	 * Return the value in the key given by $path.
+	 * 
+	 * @param string $path
+	 * @return mixed
+	 * @since 1.1
 	 */
-	public static function clearPath(&$array, $path) {
+	public static function read($path) {
 		
-		if(!is_array($path)) {
-			$path = explode('.', $path);
+		static::setInit();
+		
+		$a =& static::p()->register;
+		$path = explode('.', $path);
+		while($key = array_shift($path)) {
+			if(is_numeric($key) and intval($key) >= 0) $key = intval($key);
+			if(!isset($a[$key])) throw new MissingKeyException($key);
+			if(empty($path)) return $a[$key];
+			$a =& $a[$key];
 		}
-		
-		$_array =& $array;
-		
-		foreach($path as $i => $key) {
-			if(is_numeric($key) and intval($key) > 0 or $key == '0') {
-				$key = intval($key);
-			}
-			if($i == count($path) - 1) {
-				unset($_array[$key]);
-			}else {
-				if(!isset($_array[$key])) {
-					return $array;
-				}
-				$_array =& $_array[$key];
-			}
-		}
-		
-		return $array;
 		
 	}
 	
 	/**
-	 * Returns whether or not the kay represented by $path is set in $array.
-	 *
-	 * @param mixed $array The array (or object) to check.
-	 * @param string $path The path to the key in $array to check.
-	 * @return bool True if the key is set, false otherwise.
+	 * Checks if the key given by $path is set.
+	 * 
+	 * @param string $path
+	 * @return bool True if the key given by $path is set, false otherwise.
+	 * @since 1.1
+	 */
+	public static function check($path) {
+		
+		static::setInit();
+		
+		$a =& static::p()->register;
+		$path = explode('.', $path);
+		while($key = array_shift($path)) {
+			if(is_numeric($key) and intval($key) >= 0) $key = intval($key);
+			if(!isset($a[$key])) return false;
+			if(empty($path)) return isset($a[$key]);
+			$a =& $a[$key];
+		}
+		
+	}
+	
+	/**
+	 * Unsets the key given by $path.
+	 * 
+	 * @param string $path
+	 * @return void
+	 * @since 1.1
+	 */
+	public static function clear($path) {
+		
+		static::setInit();
+		
+		$a =& static::p()->register;
+		$path = explode('.', $path);
+		while($key = array_shift($path)) {
+			if(is_numeric($key) and intval($key) >= 0) $key = intval($key);
+			if(!isset($a[$key])) throw new MissingKeyException($key);
+			if(empty($path)) unset($a[$key]);
+			else $a =& $a[$key];
+		}
+		
+	}
+	
+	/**
+	 * Set (or it's children) cannot be instantiated.
+	 * 
+	 * @return void
+	 * @since 1.1
+	 */
+	private final function __construct() {}
+	
+	/**
+	 * Set (or it's children) cannot be cloned.
+	 * 
+	 * @return void
+	 * @since 1.1
+	 */
+	private final function __clone() {}
+	
+}
+
+/**
+ * An exception thrown when attempting to read from a non-existant key.
+ * 
+ * @subpackage exceptions
+ * @version 1.0
+ */
+class MissingKeyException extends MVCException {
+	
+	/**
+	 * Set the message with respect to a given invalid key.
+	 * 
+	 * @param string $key
+	 * @return void
 	 * @since 1.0
 	 */
-	public static function checkPath($array, $path) {
+	public function __construct($key) {
 		
-		if(!is_array($path)) {
-			$path = explode('.', $path);
-		}
-		
-		foreach($path as $i => $key) {
-			if(is_numeric($key) and intval($key) > 0 or $key == '0') {
-				$key = intval($key);
-			}
-			if($i == count($path) - 1) {
-				if(is_array($array))
-					return isset($array[$key]);
-				else
-					return isset($array->{$key});
-			}else {
-				if(is_array($array)) {
-					if(!isset($array[$key])) {
-						return false;
-					}
-					$array =& $array[$key];
-				}else {
-					if(!isset($array->{$key})) {
-						return false;
-					}
-					$array =& $array->{$key};
-				}
-			}
-		}
-		return false;
+		$this->message = "Attempted to access non-existant key `$key`.";
 		
 	}
 	

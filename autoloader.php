@@ -49,6 +49,7 @@ class Autoloader {
 		
 		$dirs = func_get_args();
 		foreach($dirs as $key => &$dir) {
+			if(!is_dir($dir)) throw new MissingDirectoryException($dir);
 			$dir = realpath($dir) . DIRECTORY_SEPARATOR;
 			if(!is_dir($dir)) unset($dirs[$key]);
 			if(!is_readable($dir)) unset($dirs[$key]);
@@ -68,6 +69,7 @@ class Autoloader {
 		
 		$fullName = $className;
 		$className = @end(explode('\\', $className));
+		$namespace = str_replace("\\$className", '', $fullName);
 		$file = Inflector::underscore($className) . '.php';
 		foreach(self::$directories as $dir) {
 			$search = "$dir$file";
@@ -88,7 +90,7 @@ class Autoloader {
  * Register Autoloader::autoload() with PHP.
  */
 Autoloader::addDirectory('.');
-spl_autoload_register(array('MVCWebComponents\\Autoloader', 'autoload'));
+spl_autoload_register(array('\\MVCWebComponents\\Autoloader', 'autoload'));
 
 /**
  * An exception thrown when a class cannot be autloaded.
@@ -104,6 +106,29 @@ class MissingClassException extends MVCException {
 		
 		$this->message = "Fatal error: could not find class <span style=\"color: #900\">$className</span>.  Search tree:<br/>";
 		$this->message .= str_replace(array("\n", ' '), array('<br/>', "&nbsp;"), print_r(Autoloader::$directories, true));
+		
+	}
+	
+}
+
+/**
+ * An exception thrown when adding a non-existant directory.
+ * 
+ * @version 1.0
+ * @subpackage exceptions
+ */
+class MissingDirectoryException extends MVCException {
+	
+	/**
+	 * Set the message based on the missing dir.
+	 * 
+	 * @param string $dir
+	 * @return void
+	 * @since 1.0
+	 */
+	public function __construct($dir) {
+		
+		$this->message = "No such directory `$dir`; Given to Autoloader::addDirectory().";
 		
 	}
 	
