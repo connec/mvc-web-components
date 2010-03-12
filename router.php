@@ -114,7 +114,6 @@ Class Router {
 	 * @param string $file The file to load.
 	 * @return bool True if the file is succesfully loaded, false otherwise.
 	 * @since 1.0
-	 * @todo Implement support for XML formatted connection files.
 	 */
 	public static function loadConnections($file) {
 		

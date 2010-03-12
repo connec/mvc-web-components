@@ -53,7 +53,6 @@ abstract class ExtensibleStatic {
 	 * 
 	 * @return void
 	 * @since 1.0
-	 * @todo Find out how to automate.
 	 */
 	protected static function __init() {
 		
