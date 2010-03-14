@@ -54,7 +54,7 @@ abstract class ExtensibleStatic {
 	 * @return void
 	 * @since 1.0
 	 */
-	public static function __init() {
+	protected static function __init() {
 		
 		if(!isset(static::$states[get_called_class()])) static::$states[get_called_class()] = new \StdClass;
 		
