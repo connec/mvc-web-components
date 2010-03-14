@@ -19,6 +19,7 @@ class ConstructTest extends UnitTest {
 			'password' => null,
 			'user_group_id' => null,
 			'joined' => null));
+		$this->assertStrict($table->getRowCount(), 2);
 		
 	}
 	

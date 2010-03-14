@@ -1,6 +1,9 @@
 <?php
 
-use MVCWebComponents\Autoloader, MVCWebComponents\Database\Database, MVCWebComponents\UnitTest\TestSuite;
+use MVCWebComponents\Autoloader,
+	MVCWebComponents\Database\Database,
+	MVCWebComponents\UnitTest\TestSuite,
+	MVCWebComponents\Model\Table;
 
 error_reporting(E_ALL | E_STRICT);
 
@@ -32,6 +35,9 @@ class ModelTests extends TestSuite {
 		
 		Database::query('select * from `users`');
 		static::assertStrict(Database::getNumResultRows(), 2);
+		
+		Table::instance('users')->updateRowCount();
+		Table::instance('posts')->updateRowCount();
 		
 	}
 	

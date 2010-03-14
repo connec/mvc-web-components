@@ -1,8 +1,4 @@
 View
-	Global assignment to View of useful framework helpers (Register, HTML generator, path generators, partial view rendering).
-	Assignment of default paths to View (to void using views_dir (or whatever) manually every time).
-	Need nicer way to import classes for use.
-	Improved sandboxing.
 	Template parsing... (tricky).
 
 Useful Helpers Functions
@@ -11,10 +7,6 @@ Useful Helpers Functions
 	Various links (images, stylesheets, urls etc).
 	(Maybe) HTML generation.
 	Common form tools (default field values).
-
-Model
-	Easy access to total row count.
-	Maintain query count (currently overwritten by related queries). (use Table class)
 
 General/Misc/Unknown
 	Easy pagination

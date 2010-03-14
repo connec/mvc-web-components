@@ -35,7 +35,7 @@ use MVCWebComponents\MVCException,
  * 
  * For specific operations see the method documentations.
  * 
- * @version 0.9.1
+ * @version 0.9.2
  */
 abstract class Model extends ExtensibleStatic {
 	
@@ -237,6 +237,41 @@ abstract class Model extends ExtensibleStatic {
 	}
 	
 	/**
+	 * Returns the number of rows in the table, as reported by the Table instance.
+	 * 
+	 * @return int
+	 * @since 0.9.2
+	 * @see Table
+	 */
+	public static function getRowCount() {
+		
+		static::__init();
+		return static::properties()->table->getRowCount();
+		
+	}
+	
+	/**
+	 * Returns the fields of this record as a hash.
+	 * 
+	 * @return array A hash of fields and values for this model.
+	 * @since 0.9
+	 */
+	public function getArray() {
+		
+		$return = $this->fields;
+		foreach($this->related as $field => $related) {
+			if(is_array($related)) {
+				$return[$field] = array();
+				foreach($related as $record) {
+					$return[$field][] = $record->getArray();
+				}
+			}else $return[$field] = $related->getArray();
+		}
+		return $return;
+		
+	}
+	
+	/**
 	 * Runs any hooks named under $name.
 	 * 
 	 * @param string $name The name of the hook to run.
@@ -376,27 +411,6 @@ abstract class Model extends ExtensibleStatic {
 		elseif(in_array($field, static::getFields())) unset($this->fields[$field]);
 		elseif(isset($this->related[$field])) unset($this->related[$field]);
 		else throw new InvalidFieldException($field, static::p()->name);
-		
-	}
-	
-	/**
-	 * Returns the fields of this record as a hash.
-	 * 
-	 * @return array A hash of fields and values for this model.
-	 * @since 0.9
-	 */
-	public function getArray() {
-		
-		$return = $this->fields;
-		foreach($this->related as $field => $related) {
-			if(is_array($related)) {
-				$return[$field] = array();
-				foreach($related as $record) {
-					$return[$field][] = $record->getArray();
-				}
-			}else $return[$field] = $related->getArray();
-		}
-		return $return;
 		
 	}
 	
@@ -704,6 +718,7 @@ abstract class Model extends ExtensibleStatic {
 		$query = 'insert into `' . static::getTableName() . "` (" . implode(', ', $fields) . ') values (' . implode(', ', $values) . ')';
 		if(Database::query($query)) {
 			if(Database::getInsertId()) $this->primary_key = Database::getInsertId();
+			static::p()->table->updateRowCount();
 			return true;
 		}else return false;
 		
@@ -730,7 +745,10 @@ abstract class Model extends ExtensibleStatic {
 		}
 		
 		$query = 'update `' . static::getTableName() . '` set ' . implode(', ', $updates) . ' where `' . static::getPrimaryKey() . "` = '$primaryKey' limit 1";
-		return Database::query($query);
+		if(Database::query($query)) {
+			static::p()->table->updateRowCount();
+			return true;
+		}else return false;
 		
 	}
 	
@@ -806,7 +824,10 @@ abstract class Model extends ExtensibleStatic {
 		
 		if(!isset($this->primary_key)) throw new BadArgumentException("Model::delete() requires the supplied data to include the primary key of the item to update.");
 		$query = 'delete from `' . static::getTableName() .'` where `' . static::getPrimaryKey() . "` = '$this->primary_key' limit 1";
-		return Database::query($query);
+		if(Database::query($query)) {
+			static::p()->table->updateRowCount();
+			return true;
+		}else return false;
 		
 	}
 	

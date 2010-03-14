@@ -12,7 +12,7 @@ use MVCWebComponents\Database\Database;
 /**
  * A simple class that fetches and represents the structure of a database table.
  * 
- * @version 0.3
+ * @version 0.4
  */
 class Table {
 	
@@ -55,6 +55,14 @@ class Table {
 	 * @since 0.1
 	 */
 	protected $schema = array();
+	
+	/**
+	 * The total number of rows in the table.
+	 * 
+	 * @var int
+	 * @since 0.4
+	 */
+	protected $rowCount;
 	
 	/**
 	 * Getter for {@link $name}.
@@ -101,6 +109,18 @@ class Table {
 	public function getSchema() {
 		
 		return $this->schema;
+		
+	}
+	
+	/**
+	 * Getter for {@link $rowCount}.
+	 * 
+	 * @return int
+	 * @since 0.4
+	 */
+	public function getRowCount() {
+		
+		return $this->rowCount;
 		
 	}
 	
@@ -153,6 +173,24 @@ class Table {
 			$this->fields[] = $field['Field'];
 			if($field['Key'] == 'PRI') $this->primaryKey = $field['Field'];
 		}
+		
+		Database::query("select count(`$this->primaryKey`) from `$this->name`");
+		$result = Database::getRow('array');
+		$this->rowCount = $result['count(`id`)'];
+		
+	}
+	
+	/**
+	 * Updates the row count.
+	 * 
+	 * @return int The updated row count.
+	 * @since 0.4
+	 */
+	public function updateRowCount() {
+		
+		Database::query("select count(`$this->primaryKey`) from `$this->name`");
+		$result = Database::getRow('array');
+		return $this->rowCount = $result['count(`id`)'];
 		
 	}
 	

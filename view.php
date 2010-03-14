@@ -12,7 +12,7 @@ namespace MVCWebComponents;
 /**
  * Generates HTML code based on a template and given variables.
  * 
- * @version 0.4
+ * @version 0.4.1
  */
 class View
 {
@@ -99,6 +99,7 @@ class View
 	public function __construct($template) {
 		
 		$this->template = static::$prePath . $template . static::$postPath;
+		$this->checkTemplate();
 		
 	}
 	
@@ -127,6 +128,18 @@ class View
 	}
 	
 	/**
+	 * Getter for {@link $template}.
+	 * 
+	 * @return string
+	 * @since 0.4.1
+	 */
+	public function getTemplate() {
+		
+		return $this->template;
+		
+	}
+	
+	/**
 	 * Register a variable to pass to the template.
 	 * 
 	 * @param string $key   The name to use to represent the variable.
@@ -144,12 +157,10 @@ class View
 	 * Render the given template.
 	 * 
 	 * @param bool $return When true the result is returned instead of echo'd.
-	 * @return mixed String if $return = true and the template is available, void otherwise.
+	 * @return mixed String if $return = true, void otherwise.
 	 * @since 0.4
 	 */
 	public function render($return = false) {
-		
-		if(!checkTemplate()) return;
 		
 		$this->return = (bool)$return; // Store $return in an instance variable for improved sandboxing.
 		
@@ -186,6 +197,32 @@ class View
 		
 	}
 	
+	/**
+	 * Loads a helper class into the register.
+	 * 
+	 * This method works best when the helper directory is in the autoload path.
+	 * 
+	 * @param string $helper The namespaced name of the helper to load.
+	 * @return bool True if the given helper could be found and loaded, false otherwise.
+	 * @since 0.4.1
+	 */
+	public function importHelper($helper, $constructOptions = array()) {
+		
+		if(!class_exists($helper)) {
+			throw new MissingHelperException($helper);
+			return false;
+		}
+		
+		$class = new $helper($constructOptions);
+		$this->helpers[] =& $class;
+		
+		$denamespaced = ucwords(@end(explode('\\', $helper)));
+		$this->{$denamespaced} =& $class;
+		
+		return true;
+		
+	}
+	
 }
 
 /**
@@ -206,6 +243,29 @@ class MissingTemplateException extends MVCException {
 	public function __construct($template) {
 		
 		$this->message = "Can not read template `$template` for view.  Ensure it exists and is readable.";
+		
+	}
+	
+}
+
+/**
+ * Thrown when {@link View::importHelper()} encounters a missing helper.
+ * 
+ * @package mvcwebcomponents.exceptions
+ * @version 1.0
+ */
+class MissingHelperException extends MVCException {
+	
+	/**
+	 * Assign the message based on the missing helper.
+	 * 
+	 * @param string $helper The path of the missing helper.
+	 * @return void
+	 * @since 1.0
+	 */
+	public function __construct($helper) {
+		
+		$this->message = "Could not find helper `$helper`.  Ensure it exists and is readable.";
 		
 	}
 	
