@@ -13,8 +13,7 @@ namespace MVCWebComponents;
  * 
  * @version 1.1
  */
-
-Class Session extends Set {
+class Session extends Set {
 	
 	/**
 	 * Overide Set's default behaviour to use $_SESSION instead of an empty array.

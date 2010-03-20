@@ -18,7 +18,7 @@ use MVCWebComponents\MVCException,
  * 
  * Once a table has been created in the database all that is needed to allow CRUD functionality is:
  * <code>
- * class User {}
+ * class User extends Model {}
  * </code>
  * 
  * Conventions assumed are:
