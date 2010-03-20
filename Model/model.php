@@ -35,7 +35,7 @@ use MVCWebComponents\MVCException,
  * 
  * For specific operations see the method documentations.
  * 
- * @version 0.9.2
+ * @version 0.9.3
  */
 abstract class Model extends ExtensibleStatic {
 	
