@@ -9,7 +9,7 @@ class ConstructTest extends UnitTest {
 	
 	public function TestValues() {
 		
-		$table = Table::instance('users');
+		$table = Table::instance('users', 'User');
 		
 		$this->assertStrict($table->getName(), 'users');
 		$this->assertStrict($table->getFields(), array('id','name','password','user_group_id','joined'));

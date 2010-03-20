@@ -7,8 +7,8 @@ class InstanceTest extends UnitTest {
 	
 	public function TestReference() {
 		
-		$this->assertStrict(Table::instance('posts'), Table::instance('posts'));
-		$this->assertFalse(Table::instance('posts') === Table::instance('users'));
+		$this->assertStrict(Table::instance('posts', 'Post'), Table::instance('posts', 'Post'));
+		$this->assertFalse(Table::instance('posts', 'Post') === Table::instance('users', 'User'));
 		
 	}
 	

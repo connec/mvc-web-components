@@ -23,7 +23,7 @@ class InitTest extends UnitTest {
 	public function TestTableInit() {
 		
 		// Check the table is loaded.
-		$table = Table::instance('users');
+		$table = Table::instance('users', 'User');
 		$this->assertEqual(User::getTableName(), 'users');
 		$this->assertEqual(User::getPrimaryKey(), $table->getPrimaryKey());
 		$this->assertEqual(User::getFields(), $table->getFields());

@@ -12,7 +12,7 @@ class CallStaticTest extends UnitTest {
 	
 	public function TestFindAll() {
 		
-		$this->assertEqual(User::findAll(array('cascade' => false)), array(
+		$this->assertEqual(User::findAll(array(), false), array(
 			new User(array(
 				'id' => 1,
 				'name' => 'Bob',
@@ -31,7 +31,7 @@ class CallStaticTest extends UnitTest {
 	
 	public function TestFindFirst() {
 		
-		$this->assertEqual(User::findFirst(array('cascade' => false)), new User(array(
+		$this->assertEqual(User::findFirst(array(), false), new User(array(
 			'id' => 1,
 			'name' => 'Bob',
 			'password' => 'bobsnewpass',
@@ -43,7 +43,7 @@ class CallStaticTest extends UnitTest {
 	
 	public function TestFindAllBy() {
 		
-		$this->assertEqual(User::findAllById(2, array('cascade' => false)), array(
+		$this->assertEqual(User::findAllById(2, array(), false), array(
 			new User(array(
 				'id' => 2,
 				'name' => 'Jim',
@@ -56,7 +56,7 @@ class CallStaticTest extends UnitTest {
 	
 	public function TestFindFirstBy() {
 		
-		$this->assertEqual(User::findFirstByName('Jim', array('cascade' => false)), new User(array(
+		$this->assertEqual(User::findFirstByName('Jim', array(), false), new User(array(
 			'id' => 2,
 			'name' => 'Jim',
 			'password' => 'jimspass',
@@ -65,7 +65,7 @@ class CallStaticTest extends UnitTest {
 		)));
 		
 		// Test a longer-than-one-word field
-		$this->assertEqual(User::findFirstByUserGroupId(1, array('cascade' => false)), new User(array(
+		$this->assertEqual(User::findFirstByUserGroupId(1, array(), false), new User(array(
 			'id' => 1,
 			'name' => 'Bob',
 			'password' => 'bobsnewpass',

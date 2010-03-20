@@ -7,7 +7,9 @@
  * @author Chris Connelly
  */
 namespace MVCWebComponents\UnitTest;
-use MVCWebComponents\MVCException, MVCWebComponents\Inflector;
+use MVCWebComponents\MVCException,
+	MVCWebComponents\Inflector,
+	MVCWebComponents\Database\Database;
 
 /**
  * The TestSuite class provides a mechanism for running an entire directory of tests.
@@ -284,6 +286,9 @@ class TestSuite {
 			static::runHook('postTest');
 			static::runHook('postTesting');
 		}
+		echo '<h2>Queries</h2>';
+		var_dump(Database::getQueries());
+		
 		exit;
 		
 	}

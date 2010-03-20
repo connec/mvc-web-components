@@ -71,8 +71,6 @@ class RelationshipFindTest extends UnitTest {
 		$this->assertTrue($this->post2->insert());
 		$this->assertTrue($this->post3->insert());
 		
-		return true;
-		
 	}
 	
 	public function TestHasMany() {
@@ -88,8 +86,8 @@ class RelationshipFindTest extends UnitTest {
 		
 		// Use our alternative 'User2' to test hasOne.
 		$this->assertEqual($users = User2::findAll(), true);
-		$this->assertEqual($users[0]->Post, Post2::findFirstByAuthorId($users[0]->id, array('cascade' => false, 'orderBy' => 'id desc')));
-		$this->assertEqual($users[1]->Post, Post2::findFirstByAuthorId($users[1]->id, array('cascade' => false)));
+		$this->assertEqual($users[0]->Post, Post2::findFirstByAuthorId($users[0]->id, array('orderBy' => 'id desc'), false));
+		$this->assertEqual($users[1]->Post, Post2::findFirstByAuthorId($users[1]->id, array(), false));
 		
 	}
 	
@@ -102,9 +100,9 @@ class RelationshipFindTest extends UnitTest {
 		$this->assertEqual(
 			array_map(function($post) {return new Post(array_filter($post->getArray(), function($x) {return !is_object($x);}));}, $posts),
 			array($this->post1, $this->post2, $this->post3));
-		$this->assertEqual($posts[0]->Author, User::findFirstById(1, array('cascade' => false)));
-		$this->assertEqual($posts[1]->Author, User::findFirstById(2, array('cascade' => false)));
-		$this->assertEqual($posts[2]->Author, User::findFirstById(1, array('cascade' => false)));
+		$this->assertEqual($posts[0]->Author, User::findFirstById(1, array(), false));
+		$this->assertEqual($posts[1]->Author, User::findFirstById(2, array(), false));
+		$this->assertEqual($posts[2]->Author, User::findFirstById(1, array(), false));
 		
 	}
 	

@@ -12,7 +12,7 @@ use MVCWebComponents\Database\Database;
 /**
  * A simple class that fetches and represents the structure of a database table.
  * 
- * @version 0.4
+ * @version 0.5
  */
 class Table {
 	
@@ -31,6 +31,14 @@ class Table {
 	 * @since 0.1
 	 */
 	protected $name;
+	
+	/**
+	 * The name of the Model this table represents.
+	 * 
+	 * @var string
+	 * @since 0.5
+	 */
+	protected $model;
 	
 	/**
 	 * An array of the fields in the table.
@@ -148,10 +156,10 @@ class Table {
 	 * @return &object The table instance, by reference.
 	 * @since 0.1
 	 */
-	public static function &instance($tableName) {
+	public static function &instance($tableName, $model) {
 		
-		if(!isset(self::$tables[$tableName])) self::$tables[$tableName] = new Table($tableName);
-		return self::$tables[$tableName];
+		if(!isset(self::$tables[$tableName][$model])) self::$tables[$tableName][$model] = new Table($tableName, $model);
+		return self::$tables[$tableName][$model];
 		
 	}
 	
@@ -162,9 +170,10 @@ class Table {
 	 * @return void
 	 * @since 0.1
 	 */
-	protected function __construct($tableName) {
+	protected function __construct($tableName, $model) {
 		
 		$this->name = $tableName;
+		$this->model = $model;
 		
 		Database::query("describe `$tableName`");
 		$this->schema = Database::getAll('array');
@@ -191,6 +200,65 @@ class Table {
 		Database::query("select count(`$this->primaryKey`) from `$this->name`");
 		$result = Database::getRow('array');
 		return $this->rowCount = $result['count(`id`)'];
+		
+	}
+	
+	/**
+	 * Finds table entries matching given options.
+	 * 
+	 * @param options
+	 * @return Model|Model[] The result of the find query.
+	 * @since 0.5
+	 */
+	public function find($options) {
+		
+		// Parse the conditions into pure SQL.
+		foreach($options['conditions'] as $key => $value) {
+			if(is_string($key)) {
+				// Parse the value for operators.
+				if(!is_string($value)) $value = strval($value);
+				if(in_array($operator = substr($value, 0, 3), array('<> ', 'in ', '!= ', '<= ', '>= '))) {
+					$operator = trim($operator);
+					if($operator == '!=') $operator = '<>';
+					if($operator == 'in') $value = "('" . implode("', '", explode(',', Database::escape(substr($value, 3)))) . "')";
+					else $value = "'" . Database::escape(substr($value, 3)) . "'";
+				}elseif(in_array($operator = substr($value, 0, 2), array('< ', '> ', '~ ', '= '))) {
+					$operator = trim($operator);
+					if($operator == '~') $operator = 'like';
+					$value = "'" . Database::escape(substr($value, 2)) . "'";
+				}else {
+					$operator = '=';
+					$value = "'" . Database::escape($value) . "'";
+				}
+				$options['conditions'][] = "`" . $this->name . "`.`$key` $operator $value";
+				unset($options['conditions'][$key]);
+			}
+		}
+		
+		// Start building the query.
+		$query = 'select * from `' . $this->name . "` where " . (implode(' ' . $options['operator'] . ' ', $options['conditions']) ?: '1');
+		
+		// Append the other options.
+		if($options['orderBy']) {
+			@list($field, $dir) = explode(' ', $options['orderBy']);
+			if($dir != 'asc' and $dir != 'desc') $dir = 'asc';
+			$query .= " order by `" . $this->name . "`.`$field` $dir";
+		}
+		if($options['limit']) $query .= ' limit ' . $options['limit'];
+		
+		// Perform the query.
+		Database::query($query);
+		$class = $this->model;
+		if($options['type'] == 'first') {
+			$return = Database::getRow('array');
+			if($return) $return = new $class($return);
+			else $return = null;
+		}else {
+			$return = Database::getAll('array');
+			if(!empty($return)) $return = array_map(function($row) use($class) {return new $class($row);}, $return);
+		}
+		
+		return $return;
 		
 	}
 	

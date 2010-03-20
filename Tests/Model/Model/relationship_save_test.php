@@ -45,7 +45,7 @@ class RelationshipSaveTest extends UnitTest {
 			'time' => time()));
 		$this->assertTrue($user->save(array('cascade' => true, 'validate' => false)));
 		$this->assertEqual($user->Post->author_id, $user->id);
-		$this->assertEqual(Post2::findFirst(array('cascade' => false)), $user->Post);
+		$this->assertEqual(Post2::findFirst(array(), false), $user->Post);
 		
 	}
 	
@@ -68,7 +68,7 @@ class RelationshipSaveTest extends UnitTest {
 			'joined' => time()));
 		$this->assertTrue($post->save(array('cascade' => true, 'validate' => false)));
 		$this->assertEqual($post->author_id, $post->Author->id);
-		$this->assertEqual(User2::findFirst(array('cascade' => false, 'orderBy' => 'id desc')), $post->Author);
+		$this->assertEqual(User2::findFirst(array('orderBy' => 'id desc'), false), $post->Author);
 		
 	}
 	
@@ -87,7 +87,8 @@ class RelationshipSaveTest extends UnitTest {
 	
 	public function TestHasManyInsert() {
 		
-		$this->assertEqual($posts = Post::findAll(array('fields' => array('category_id','title','content','time'), 'cascade' => false)), true);
+		$this->assertEqual($posts = Post::findAll(array(), false), true);
+		foreach($posts as $post) $post->id = null;
 		
 		// Reset everything for convenience.
 		ModelTests::runHook('postTest');

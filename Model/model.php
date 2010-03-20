@@ -428,7 +428,7 @@ abstract class Model extends ExtensibleStatic {
 		// Store the model name (sans namespace) in the metadata.
 		static::p()->name = @end(explode('\\', static::getName()));
 		static::p()->tableName = static::$tableName ?: Inflector::tableize(static::p()->name);
-		static::p()->table = Table::instance(static::p()->tableName);
+		static::p()->table = Table::instance(static::p()->tableName, static::getName());
 		static::p()->validate = static::$validate ?: array();
 		
 		static::normalizeRelations();
@@ -533,7 +533,8 @@ abstract class Model extends ExtensibleStatic {
 		}
 		if(empty($methodParts)) {
 			if(!isset($args[0]) or !is_array($args[0])) $args[0] = array();
-			return call_user_func(array(static::getName(), 'find'), array_merge($args[0], $options));
+			$args[0] = array_merge($args[0], $options);
+			return call_user_func_array(array(static::getName(), 'find'), $args);
 		}
 		
 		if(array_shift($methodParts) != 'by') $error();
@@ -541,10 +542,12 @@ abstract class Model extends ExtensibleStatic {
 		
 		$field = implode('_', $methodParts);
 		if(!in_array($field, static::getFields())) $error();
-		$options['conditions'] = array($field => $args[0]);
-		if(!isset($args[1]) or !is_array($args[1])) $args[1] = array();
-		if(isset($args[1]['conditions'])) $options['conditions'] = array_merge($args[1]['conditions'], $options['conditions']);
-		return static::find(array_merge($args[1], $options));
+		$options['conditions'] = array($field => array_shift($args));
+		
+		if(!isset($args[0]) or !is_array($args[0])) $args[0] = array();
+		$args[0] = array_merge_recursive($args[0], $options);
+		
+		return call_user_func_array(array(static::getName(), 'find'), $args);
 		
 	}
 	
@@ -572,92 +575,29 @@ abstract class Model extends ExtensibleStatic {
 	 * @return mixed Array or object of results.
 	 * @since 0.1
 	 */
-	public static function find($options = array()) {
+	public static function find($options = array(), $cascade = true, $processed = array()) {
 		
 		static::__init();
 		
 		// Fill any unset options with defaults.
 		$defaults = array(
 			'conditions' => array(),
-			'fields' => '*',
 			'type' => 'all',
 			'orderBy' => '',
 			'limit' => 0,
-			'operator' => 'and',
-			'cascade' => true,
-			'processed' => array(static::getName())
+			'operator' => 'and'
 		);
 		$options = array_merge($defaults, $options);
+		if(empty($processed)) $processed = array(static::getName());
 		
-		// Get the SQL query.
-		$query = static::buildSQL($options);
-		
-		// Execute query and store result.
-		Database::query($query);
-		$class = static::getName();
-		if($options['type'] == 'first') {
-			$return = Database::getRow('array');
-			if($return) $return = new $class($return);
-			else $return = null;
-		}else {
-			$return = Database::getAll('array');
-			if(!empty($return)) $return = array_map(function($row) use($class) {return new $class($row);}, $return);
-		}
+		// Query the table.
+		$return = static::p()->table->find($options);
 		
 		// Relate the result if in the options.
-		if($return and $options['cascade']) static::findRelated($return, $options['processed']);
+		if($return and $cascade) static::findRelated($return, $processed);
 		
 		// Return it.
 		return $return;
-		
-	}
-	
-	/**
-	 * Constructs an SQL query from given options.
-	 * 
-	 * @param array $options The options as passed to find.
-	 * @return string An SQL query string.
-	 * @since 0.8
-	 */
-	protected static function buildSQL($options) {
-		
-		foreach($options['conditions'] as $key => $value) {
-			if(is_string($key)) {
-				// Parse the value for operators.
-				if(!is_string($value)) $value = strval($value);
-				if(in_array($operator = substr($value, 0, 3), array('<> ', 'in ', '!= ', '<= ', '>= '))) {
-					$operator = trim($operator);
-					if($operator == '!=') $operator = '<>';
-					if($operator == 'in') $value = "('" . implode("', '", explode(',', Database::escape(substr($value, 3)))) . "')";
-					else $value = "'" . Database::escape(substr($value, 3)) . "'";
-				}elseif(in_array($operator = substr($value, 0, 2), array('< ', '> ', '~ ', '= '))) {
-					$operator = trim($operator);
-					if($operator == '~') $operator = 'like';
-					$value = "'" . Database::escape(substr($value, 2)) . "'";
-				}else {
-					$operator = '=';
-					$value = "'" . Database::escape($value) . "'";
-				}
-				$options['conditions'][] = "`" . static::p()->name . "`.`$key` $operator $value";
-				unset($options['conditions'][$key]);
-			}
-		}
-		
-		// Sort out the 'fields' options.
-		if(is_array($options['fields'])) $options['fields'] = "`" . static::p()->name . "`.`" . implode("`,`" . static::p()->name . "`.`", $options['fields']) . '`';
-		
-		// Start building the query.
-		$query = 'select ' . $options['fields'] . ' from `' . static::getTableName() . "` as `" . static::p()->name . "` where " . (implode(' ' . $options['operator'] . ' ', $options['conditions']) ?: '1');
-		
-		// Append the other options.
-		if($options['orderBy']) {
-			@list($field, $dir) = explode(' ', $options['orderBy']);
-			if($dir != 'asc' and $dir != 'desc') $dir = 'asc';
-			$query .= " order by `" . static::p()->name . "`.`$field` $dir";
-		}
-		if($options['limit']) $query .= ' limit ' . $options['limit'];
-		
-		return $query;
 		
 	}
 	
@@ -683,7 +623,6 @@ abstract class Model extends ExtensibleStatic {
 					if(in_array($relation['model'], $processed)) continue;
 					
 					$processed[] = $relation['model'];
-					$relation['options']['processed'] = $processed;
 					
 					if(!isset($relation['options']['conditions'])) $relation['options']['conditions'] = array();
 					if($relationType == 'belongsTo') $relation['options']['conditions'][$relation['model']::getPrimaryKey()] = $result->{$relation['foreignKey']};
@@ -691,7 +630,7 @@ abstract class Model extends ExtensibleStatic {
 					
 					if($relationType == 'hasMany') $alias = Inflector::pluralize($alias);
 					
-					$result->$alias = $relation['model']::find($relation['options']);
+					$result->$alias = $relation['model']::find($relation['options'], true, $processed);
 				}
 			}
 		}else throw new BadArgumentException('Model::findRelated() expects parameter 1 to be object or array, \'' . gettype($result) . '\' given.');

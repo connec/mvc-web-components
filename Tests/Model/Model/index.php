@@ -36,8 +36,8 @@ class ModelTests extends TestSuite {
 		Database::query('select * from `users`');
 		static::assertStrict(Database::getNumResultRows(), 2);
 		
-		Table::instance('users')->updateRowCount();
-		Table::instance('posts')->updateRowCount();
+		Table::instance('users', 'User')->updateRowCount();
+		Table::instance('posts', 'Post')->updateRowCount();
 		
 	}
 	
