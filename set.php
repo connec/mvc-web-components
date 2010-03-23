@@ -13,7 +13,7 @@ namespace MVCWebComponents;
  * 
  * Extensible, static class for reading and writing to an array (or ArrayAccess-able object) using a 'dot path' such as 'user.name' etc.
  * 
- * @version 1.1
+ * @version 1.2
  */
 
 abstract class Set extends ExtensibleStatic {
@@ -32,6 +32,48 @@ abstract class Set extends ExtensibleStatic {
 	}
 	
 	/**
+	 * Gets a reference to the last array element before the final 'key'.
+	 * 
+	 * @param  string $path
+	 * @param  string $create What to do when a missing key is encountered (error, create or return false).
+	 * @return array  A reference to the last array in $path.
+	 * @since  1.2
+	 */
+	protected static function &getLastArray($path, $create = 'error') {
+		
+		static::setInit();
+		
+		$false = false; // avoid strict standard errors regarding passing by ref.
+		
+		$a =& static::p()->register;
+		$path = explode('.', $path);
+		while($key = array_shift($path) or $key !== null) { // second comparison avoids ignoring '0' keys
+			if(is_numeric($key) and intval($key) >= 0) $key = intval($key);
+			if(!isset($a[$key])) {
+				if($create == 'error') throw new MissingKeyException($key);
+				elseif($create == 'create') $a[$key] = array();
+				else return $false;
+			}
+			if(empty($path)) return $a;
+			$a =& $a[$key];
+		}
+		
+	}
+	
+	/**
+	 * Gets the last key from a path.
+	 * 
+	 * @param  string $path
+	 * @return string
+	 * @since  1.2
+	 */
+	protected static function getLastKey($path) {
+		
+		return @end(explode('.', $path));
+		
+	}
+	
+	/**
 	 * Writes $value to the key specified by $path.
 	 * 
 	 * @param string $path The path to the key to write to.
@@ -42,17 +84,8 @@ abstract class Set extends ExtensibleStatic {
 	public static function write($path, $value) {
 		
 		static::setInit();
-		
-		$a =& static::p()->register;
-		$path = explode('.', $path);
-		while($key = array_shift($path)) {
-			if(is_numeric($key) and intval($key) >= 0) $key = intval($key);
-			if(empty($path)) $a[$key] = $value;
-			else {
-				if(!isset($a[$key])) $a[$key] = array();
-				$a =& $a[$key];
-			}
-		}
+		$a =& static::getLastArray($path, 'create');
+		$a[static::getLastKey($path)] = $value;
 		
 	}
 	
@@ -66,15 +99,8 @@ abstract class Set extends ExtensibleStatic {
 	public static function read($path) {
 		
 		static::setInit();
-		
-		$a =& static::p()->register;
-		$path = explode('.', $path);
-		while($key = array_shift($path)) {
-			if(is_numeric($key) and intval($key) >= 0) $key = intval($key);
-			if(!isset($a[$key])) throw new MissingKeyException($key);
-			if(empty($path)) return $a[$key];
-			$a =& $a[$key];
-		}
+		$a = static::getLastArray($path);
+		return $a[static::getLastKey($path)];
 		
 	}
 	
@@ -88,15 +114,8 @@ abstract class Set extends ExtensibleStatic {
 	public static function check($path) {
 		
 		static::setInit();
-		
-		$a =& static::p()->register;
-		$path = explode('.', $path);
-		while($key = array_shift($path)) {
-			if(is_numeric($key) and intval($key) >= 0) $key = intval($key);
-			if(!isset($a[$key])) return false;
-			if(empty($path)) return isset($a[$key]);
-			$a =& $a[$key];
-		}
+		$a =& static::getLastArray($path, 'return');
+		return $a === false ? false : true;
 		
 	}
 	
@@ -110,15 +129,28 @@ abstract class Set extends ExtensibleStatic {
 	public static function clear($path) {
 		
 		static::setInit();
+		$a =& static::getLastArray($path);
+		unset($a[static::getLastKey($path)]);
 		
-		$a =& static::p()->register;
-		$path = explode('.', $path);
-		while($key = array_shift($path)) {
-			if(is_numeric($key) and intval($key) >= 0) $key = intval($key);
-			if(!isset($a[$key])) throw new MissingKeyException($key);
-			if(empty($path)) unset($a[$key]);
-			else $a =& $a[$key];
-		}
+	}
+	
+	/**
+	 * Append some data to the contents of the key given by $path.
+	 * 
+	 * @param string $path
+	 * @return void
+	 * @since 1.2
+	 */
+	public static function append($path, $value) {
+		
+		static::setInit();
+		$a =& static::getLastArray($path);
+		$v =& $a[static::getLastKey($path)];
+		
+			if(is_array($v))  $v[] = $value;
+		elseif(is_string($v)) $v .= strval($value);
+		elseif(is_int($v))    $v += intval($value);
+		elseif(is_float($v))  $v += floatval($value);
 		
 	}
 	

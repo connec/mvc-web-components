@@ -1,6 +1,10 @@
 View
 	Template parsing... (tricky).
 
+Testing
+	More aesthetically appealing, maybe use Ruby's 'should' system, e.g.
+	public function should_ensure_some_stuff_happens() {}
+
 Useful Helpers Functions
 	View rendering, focus on easily rendering partials.
 	Redirecting.
