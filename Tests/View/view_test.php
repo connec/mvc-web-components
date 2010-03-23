@@ -65,6 +65,20 @@ STRING;
 		
 	}
 	
+	public function TestGlobalAssign() {
+		
+		View::registerGlobal('header', 'a');
+		
+		$should_be = <<<STRING
+<h1>a</h1>
+<p>
+	tpl.php</p>
+STRING;
+		$view = new View('.');
+		$this->assertStrict($view->render(true), $should_be);
+		
+	}
+	
 }
 
 ?>

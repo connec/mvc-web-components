@@ -43,7 +43,7 @@ class Post2 extends Model {
 
 class RelationshipFindTest extends UnitTest {
 	
-	public $dependencies = array('FindTest', 'CallStaticTest', 'InitTest', 'InsertTest');
+	public $dependencies = array('FindTest', 'CallStaticTest', 'InitTest', 'SaveTest');
 	
 	public function preTesting() {
 		
@@ -67,9 +67,9 @@ class RelationshipFindTest extends UnitTest {
 			'content' => 'Post 3 Content',
 			'time' => time()));
 		
-		$this->assertTrue($this->post1->insert());
-		$this->assertTrue($this->post2->insert());
-		$this->assertTrue($this->post3->insert());
+		$this->assertTrue($this->post1->save());
+		$this->assertTrue($this->post2->save());
+		$this->assertTrue($this->post3->save());
 		
 	}
 	

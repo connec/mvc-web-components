@@ -579,15 +579,7 @@ abstract class Model extends ExtensibleStatic {
 		
 		static::__init();
 		
-		// Fill any unset options with defaults.
-		$defaults = array(
-			'conditions' => array(),
-			'type' => 'all',
-			'orderBy' => '',
-			'limit' => 0,
-			'operator' => 'and'
-		);
-		$options = array_merge($defaults, $options);
+		// Initialize the processed array.
 		if(empty($processed)) $processed = array(static::getName());
 		
 		// Query the table.
@@ -638,60 +630,6 @@ abstract class Model extends ExtensibleStatic {
 	}
 	
 	/**
-	 * Inserts this record into the database.  Also updates the primary key with {@link Database::getInsertId()}.
-	 * 
-	 * @return bool True on success, false on failure.
-	 * @since 0.1
-	 * @throws BadArgumentException Thrown when $data is not an object.
-	 */
-	public function insert() {
-		
-		$fields = array();
-		$values = array();
-		foreach($this->fields as $field => $value) {
-			if(!in_array($field, static::getFields()) or $this->fields[$field] === null) continue;
-			$fields[] = "`$field`";
-			$values[] = "'" . Database::escape($value) . "'";
-		}
-		
-		$query = 'insert into `' . static::getTableName() . "` (" . implode(', ', $fields) . ') values (' . implode(', ', $values) . ')';
-		if(Database::query($query)) {
-			if(Database::getInsertId()) $this->primary_key = Database::getInsertId();
-			static::p()->table->updateRowCount();
-			return true;
-		}else return false;
-		
-	}
-	
-	/**
-	 * Updates a record in the database.
-	 * 
-	 * Updates the record in database, identified by the primary key, with the other values in the record.
-	 * 
-	 * @return bool True on success, false on failure.
-	 * @since 0.1
-	 * @throws BadArgumentException Thrown when $data is not an object or does not contain a value for the primary key.
-	 */
-	public function update() {
-		
-		if(!isset($this->primary_key)) throw new BadArgumentException("Model::update() requires the supplied data to include the primary key of the item to update.");
-		
-		$primaryKey = $this->primary_key;
-		$updates = array();
-		foreach($this->fields as $field => $value) {
-			if($field == static::getPrimaryKey()) continue;
-			$updates[] = "`$field` = '" . Database::escape($value) . "'";
-		}
-		
-		$query = 'update `' . static::getTableName() . '` set ' . implode(', ', $updates) . ' where `' . static::getPrimaryKey() . "` = '$primaryKey' limit 1";
-		if(Database::query($query)) {
-			static::p()->table->updateRowCount();
-			return true;
-		}else return false;
-		
-	}
-	
-	/**
 	 * Updates or inserts this record depending on its content.
 	 * 
 	 * Either updates or inserts this record depending on whether or not the primary key is in the data and whether or not it is unique in the table.
@@ -728,7 +666,14 @@ abstract class Model extends ExtensibleStatic {
 		else $function = 'update';
 		
 		if($options['validate']) if($this->validate() !== true) return false;
-		$return[] = $this->$function();
+		if($function == 'update') {
+			$return[] = static::p()->table->update($this);
+		}else {
+			if($id = static::p()->table->insert($this)) {
+				if(is_int($id)) $this->primary_key = $id;
+				$return[] = true;
+			}else $return[] = false;
+		}
 		
 		if($options['cascade']) {
 			foreach(static::p()->hasMany as $alias => $relation) {
@@ -761,12 +706,7 @@ abstract class Model extends ExtensibleStatic {
 	 */
 	public function delete() {
 		
-		if(!isset($this->primary_key)) throw new BadArgumentException("Model::delete() requires the supplied data to include the primary key of the item to update.");
-		$query = 'delete from `' . static::getTableName() .'` where `' . static::getPrimaryKey() . "` = '$this->primary_key' limit 1";
-		if(Database::query($query)) {
-			static::p()->table->updateRowCount();
-			return true;
-		}else return false;
+		return static::p()->table->delete($this);
 		
 	}
 	

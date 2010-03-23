@@ -1,6 +1,9 @@
 <?php
 
-use MVCWebComponents\Autoloader, MVCWebComponents\Database\Database, MVCWebComponents\UnitTest\TestSuite;
+use MVCWebComponents\Autoloader,
+	MVCWebComponents\Database\Database,
+	MVCWebComponents\Model\Table,
+	MVCWebComponents\UnitTest\TestSuite;
 
 error_reporting(E_ALL | E_STRICT);
 
@@ -21,6 +24,32 @@ Database::connect(
 	)
 );
 
-TestSuite::runTests();
+class TableTests extends TestSuite {
+	
+	public static $ensurePostTesting = true;
+	
+	public static function preTest() {
+		
+		Database::query('select * from `posts`');
+		static::assertStrict(Database::getNumResultRows(), 0);
+		
+		Database::query('select * from `users`');
+		static::assertStrict(Database::getNumResultRows(), 2);
+		
+		Table::instance('users', 'User')->updateRowCount();
+		Table::instance('posts', 'Post')->updateRowCount();
+		
+	}
+	
+	public static function postTest() {
+		
+		static::assertTrue(Database::query("delete from `users` where `id` <> '1' and `id` <> '2'"));
+		static::assertTrue(Database::query('truncate table `posts`'));
+		
+	}
+	
+}
+
+TableTests::runTests();
 
 ?>

@@ -12,7 +12,7 @@ namespace MVCWebComponents;
 /**
  * Generates HTML code based on a template and given variables.
  * 
- * @version 0.4.1
+ * @version 0.4.2
  */
 class View
 {
@@ -40,6 +40,14 @@ class View
 	 * @since 0.4
 	 */
 	protected $register = array();
+	
+	/**
+	 * An associative array of variable => 'value' pairs to pass to all templates.
+	 * 
+	 * @var array
+	 * @since 0.4.2
+	 */
+	protected static $globalRegister = array();
 	
 	/**
 	 * The path to this Views template.
@@ -86,6 +94,19 @@ class View
 	public static function setPostPath($postPath) {
 		
 		static::$postPath = $postPath;
+		
+	}
+	
+	/**
+	 * Set a global value.
+	 * 
+	 * @param  string $key   The name to use for the data.
+	 * @param  mixed  $value The value to store.
+	 * @return void
+	 */
+	public static function registerGlobal($key, $value) {
+		
+		static::$globalRegister[$key] = $value;
 		
 	}
 	
@@ -164,7 +185,8 @@ class View
 		
 		$this->return = (bool)$return; // Store $return in an instance variable for improved sandboxing.
 		
-		// Extract the register into the local scope.
+		// Extract the registers into the local scope.
+		extract(static::$globalRegister);
 		extract($this->register);
 		
 		// Begin output buffering.
@@ -216,7 +238,7 @@ class View
 		$class = new $helper($constructOptions);
 		$this->helpers[] =& $class;
 		
-		$denamespaced = ucwords(@end(explode('\\', $helper)));
+		$denamespaced = @end(explode('\\', $helper));
 		$this->{$denamespaced} =& $class;
 		
 		return true;

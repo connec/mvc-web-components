@@ -7,7 +7,7 @@ class Post extends Model {}
 
 class SaveTest extends UnitTest {
 	
-	public $dependencies = array('InsertTest', 'UpdateTest');
+	public $dependencies = array('FindTest');
 	
 	public function TestInsertion() {
 		

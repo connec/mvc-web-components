@@ -7,12 +7,13 @@
  * @author Chris Connelly
  */
 namespace MVCWebComponents\Model;
-use MVCWebComponents\Database\Database;
+use MVCWebComponents\Database\Database,
+	MVCWebComponents\BadArgumentException;
 
 /**
  * A simple class that fetches and represents the structure of a database table.
  * 
- * @version 0.5
+ * @version 0.5.1
  */
 class Table {
 	
@@ -183,9 +184,7 @@ class Table {
 			if($field['Key'] == 'PRI') $this->primaryKey = $field['Field'];
 		}
 		
-		Database::query("select count(`$this->primaryKey`) from `$this->name`");
-		$result = Database::getRow('array');
-		$this->rowCount = $result['count(`id`)'];
+		$this->updateRowCount();
 		
 	}
 	
@@ -210,7 +209,17 @@ class Table {
 	 * @return Model|Model[] The result of the find query.
 	 * @since 0.5
 	 */
-	public function find($options) {
+	public function find($options = array()) {
+		
+		// Fill any unset options with defaults.
+		$defaults = array(
+			'conditions' => array(),
+			'type' => 'all',
+			'orderBy' => '',
+			'limit' => 0,
+			'operator' => 'and'
+		);
+		$options = array_merge($defaults, $options);
 		
 		// Parse the conditions into pure SQL.
 		foreach($options['conditions'] as $key => $value) {
@@ -259,6 +268,80 @@ class Table {
 		}
 		
 		return $return;
+		
+	}
+	
+	/**
+	 * Inserts a record into the database.
+	 * 
+	 * @param  Model A model instance to insert.
+	 * @return mixed The insert id on success, true if table doesn't use AI, false if insert failed.
+	 * @since 0.5.1
+	 * @throws BadArgumentException Thrown when $record is not a Model.
+	 */
+	public function insert($record) {
+		
+		if(!($record instanceof Model)) throw new BadArgumentException('Table::insert() can only insert Model instances.');
+		
+		$fields = array();
+		$values = array();
+		foreach($this->fields as $field) {
+			if(!isset($record->$field) or $record->$field === null) continue;
+			$fields[] = "`$field`";
+			$values[] = "'" . Database::escape($record->$field) . "'";
+		}
+		
+		$query = 'insert into `' . $this->name . "` (" . implode(', ', $fields) . ') values (' . implode(', ', $values) . ')';
+		if(Database::query($query)) {
+			$this->rowCount += 1;
+			if(Database::getInsertId()) return Database::getInsertId();
+			return true;
+		}else return false;
+		
+	}
+	
+	/**
+	 * Updates a record in the database.
+	 * 
+	 * Updates the record in database, identified by the primary key, with the other values in the record.
+	 * 
+	 * @param  Model The record to update.
+	 * @return bool  True on success, false on failure.
+	 * @since  0.5.1
+	 * @throws BadArgumentException Thrown when $record is not a model or does not contain a value for the primary key.
+	 */
+	public function update($record) {
+		
+		if(!($record instanceof Model)) throw new BadArgumentException('Table::update() can only update Model instances.');
+		if(!isset($record->primary_key))  throw new BadArgumentException('Table::update() requires the given record to include the primary key of the item to update.');
+		
+		$updates = array();
+		foreach($this->fields as $field) {
+			if($field == $this->primaryKey) continue;
+			$updates[] = "`$field` = '" . Database::escape($record->$field) . "'";
+		}
+		
+		$query = 'update `' . $this->name . '` set ' . implode(', ', $updates) . ' where `' . $this->primaryKey . "` = '$record->primary_key' limit 1";
+		if(Database::query($query)) return true;
+		else return false;
+		
+	}
+	
+	/**
+	 * Deletes a record from the database.
+	 * 
+	 * @return bool True on success, false on failure.
+	 * @since 0.5.1
+	 * @throws BadArgumentException Thrown when $data is not an object or it does not contain a value for the primary key.
+	 */
+	public function delete($record) {
+		
+		if(!isset($record->primary_key)) throw new BadArgumentException('Table::delete() requires the supplied data to include the primary key of the item to update.');
+		$query = 'delete from `' . $this->name .'` where `' . $this->primaryKey . "` = '$record->primary_key' limit 1";
+		if(Database::query($query)) {
+			$this->rowCount -= 1;
+			return true;
+		}else return false;
 		
 	}
 	
