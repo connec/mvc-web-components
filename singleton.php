@@ -46,7 +46,7 @@ abstract class Singleton {
 	 * @return object An instance of the calling class, by reference.
 	 * @since 1.0
 	 */
-	final public static function &getInstance() {
+	final public static function &instance() {
 		
 		$class = get_called_class();
 		if(!isset(self::$instances[$class])) self::$instances[$class] = new $class;
