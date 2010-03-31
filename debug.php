@@ -11,7 +11,7 @@ namespace MVCWebComponents;
 /**
  * Provides useful debugging functions.
  * 
- * @version 1.1
+ * @version 1.2
  */
 class Debug {
 	
@@ -24,23 +24,6 @@ class Debug {
 	protected static $watched = array();
 	
 	/**
-	 * A hash of css classes to use in the markup.
-	 * 
-	 * @var array
-	 * @since 1.1
-	 */
-	public static $elementClasses = array(
-		'header' => 'debug-header',
-		'table' => 'debug-table',
-		'tableHeading' => 'debug-table-heading',
-		'tableRowEven' => 'debug-table-row-even',
-		'tableRowOdd' => 'debug-table-row-odd',
-		'dump' => 'debug-dump',
-		'traceRowEven' => 'debug-trace-row-even',
-		'traceRowOdd' => 'debug-trace-row-odd'
-	);
-	
-	/**
 	 * Store a reference to a variable to watch.
 	 * 
 	 * @param string $key The name to store the reference under.
@@ -50,8 +33,8 @@ class Debug {
 	 */
 	public static function watch($key, &$var) {
 		
-		if(!isset(self::$watched[$key])) self::$watched[$key] = array();
-		self::$watched[$key]['ref'] =& $var;
+		if(!isset(static::$watched[$key])) static::$watched[$key] = array();
+		static::$watched[$key]['ref'] =& $var;
 		
 	}
 	
@@ -64,8 +47,8 @@ class Debug {
 	 */
 	public static function watchValue($key, $bookmark = '') {
 		
-		if(is_object($key)) return clone self::$watched[$key]['ref'];
-		else return self::$watched[$key]['ref'];
+		if(is_object($key) or is_array($key)) return unserialize(serialize(static::$watched[$key]['ref']));
+		else return static::$watched[$key]['ref'];
 		
 	}
 	
@@ -80,8 +63,8 @@ class Debug {
 	 */
 	public static function bookmark($key, $bookmark) {
 		
-		if(!isset(self::$watched[$key]['bookmarks'])) self::$watched[$key]['bookmarks'] = array();
-		self::$watched[$key]['bookmarks'][$bookmark] = self::watchValue($key);
+		if(!isset(static::$watched[$key]['bookmarks'])) static::$watched[$key]['bookmarks'] = array();
+		static::$watched[$key]['bookmarks'][$bookmark] = static::watchValue($key);
 		
 	}
 	
@@ -95,8 +78,8 @@ class Debug {
 	 */
 	public static function bookmarkValue($key, $bookmark) {
 		
-		if(is_object(self::$watched[$key]['bookmarks'][$bookmark])) return clone self::$watched[$key]['bookmarks'][$bookmark];
-		else return self::$watched[$key]['bookmarks'][$bookmark];
+		if(is_object(static::$watched[$key]['bookmarks'][$bookmark])) return clone static::$watched[$key]['bookmarks'][$bookmark];
+		else return static::$watched[$key]['bookmarks'][$bookmark];
 		
 	}
 	
@@ -110,17 +93,17 @@ class Debug {
 	 */
 	public static function table($data, $return) {
 		
-		$output = '<table class="' . self::$elementClasses['table'] . '">';
-		$output .= '<tr class="' . self::$elementClasses['tableHeading'] . '"><th>Key</th><th>Value</th></tr>';
+		$output = '<table class="debug-table">';
+		$output .= '<tr class="debug-table-heading"><th>Key</th><th>Value</th></tr>';
 		foreach($data as $key => $value) {
-			if(isset($type) and $type == 'Even') $type = 'Odd';
-			else $type = 'Even';
+			if(isset($type) and $type == 'even') $type = 'odd';
+			else $type = 'even';
 			
 			ob_start();
 			var_dump($value);
 			$dump = ob_get_clean();
 			
-			$output .= '<tr class="' . self::$elementClasses["tableRow$type"] . "\"><td>$key</td><td><pre>$dump</pre></td></tr>";
+			$output .= "<tr class=\"$type\"><td>$key</td><td><pre>$dump</pre></td></tr>";
 		}
 		$output .= '</table>';
 		
@@ -137,12 +120,12 @@ class Debug {
 	 */
 	public static function watchTable($return = false) {
 		
-		$output = '<h2 class="' . self::$elementClasses['header'] . '">Watched Variables.</h2>';
+		$output = '<h2>Watched Variables</h2>';
 		$array = array();
-		foreach(self::$watched as $key => &$value) {
+		foreach(static::$watched as $key => &$value) {
 			$array[$key] = $value['ref'];
 		}
-		$output .= self::table($array, true);
+		$output .= static::table($array, true);
 		
 		if($return) return $output;
 		else echo $output;
@@ -159,8 +142,8 @@ class Debug {
 	 */
 	public static function bookmarkTable($key, $return = false) {
 		
-		$output ='<h2 class="' . self::$elementClasses['header'] . "\">Bookmarks ($key)</h2>";
-		$output .= self::table(self::$watched[$key]['bookmarks'], true);
+		$output ="<h2>Bookmarks ($key)</h2>";
+		$output .= static::table(static::$watched[$key]['bookmarks'], true);
 		
 		if($return) return $output;
 		else echo $output;
@@ -180,7 +163,7 @@ class Debug {
 		$backtrace = debug_backtrace(false);
 		$i = count($backtrace);
 		foreach($backtrace as $trace) {
-			@$output .= '<span class="' . self::$elementClasses['traceRow' . ($i % 2 == 0 ? 'Even' : 'Odd')] . '">' . "$i: {$trace['class']}{$trace['type']}{$trace['function']}() <i>{$trace['file']} line {$trace['line']}</i></span>\n";
+			@$output .= '<span class="' . ($i % 2 == 0 ? 'even' : 'odd') . '">' . "$i: {$trace['class']}{$trace['type']}{$trace['function']}() <i>{$trace['file']} line {$trace['line']}</i></span>\n";
 			$i -= 1;
 		}
 		
@@ -200,11 +183,15 @@ class Debug {
 	 */
 	public static function dump($value) {
 		
-		$output = "\n<pre class=\"" . self::$elementClasses['dump'] . "\">\n<h2 class=\"" . self::$elementClasses['header'] . "\">Debug Output</h2>\n";
+		$output  = '<h2>Debug Output</h2>';
+		$output .= '<pre class="debug-dump">';
+		
 		ob_start();
 		var_dump($value);
+		
 		$output .= ob_get_clean();
 		$output .= Debug::backtrace(true);
+		$output .= '</pre>';
 		
 		echo $output;
 		
