@@ -12,9 +12,9 @@ use MVCWebComponents\MVCException;
 /**
  * Gets an array of parameters from an input URL using defined patterns.
  * 
- * @version 1.1
+ * @version 1.2
  */
-Class Router {
+class Router {
 	
 	/**
 	 * A static register of matchable patterns, or 'connections'.
@@ -22,7 +22,7 @@ Class Router {
 	 * Format:
 	 * <code>
 	 * static $connections = array(
-	 *    'urlPattern' =? '/connection/:syntax/pattern/*',
+	 *    'urlPattern' => '/connection/:syntax/pattern/*',
 	 *    'regex' => '/connection/(?<syntax>[^/]+)/pattern/(?<other>.*)',
 	 *    'parameters' => array('var1' => 'value', 'var2' => 'value')
 	 * );
@@ -30,7 +30,19 @@ Class Router {
 	 * @var array
 	 * @since 1.0
 	 */
-	public static $connections = array();
+	protected static $connections = array();
+	
+	/**
+	 * Clears all registered connections.  Useful for testing.
+	 * 
+	 * @return void
+	 * @since 1.2
+	 */
+	public static function disconnectAll() {
+		
+		static::$connections = array();
+		
+	}
 	
 	/**
 	 * Registers a connection of a url pattern to a set of variables.
@@ -40,7 +52,7 @@ Class Router {
 	 * @return bool True if $urlPattern is valid, false otherwise.
 	 * @since 1.0
 	 */
-	public static function connect($urlPattern, $parameters) {
+	public static function connect($urlPattern, $parameters = array()) {
 		
 		// Handle multiple urlPatterns.
 		if(is_array($urlPattern)) {
@@ -48,8 +60,11 @@ Class Router {
 			return;
 		}
 		
+		// Append the trailing "/" if one is missing.
+		if(substr($urlPattern, -1) != '/') $urlPattern .= '/';
+		
 		// Check $urlPattern uses valid 'connection syntax'.
-		$validUrlPattern = '#(?:/[a-z0-9_*:]+)+|/#i';
+		$validUrlPattern = '#^(?:/[a-z0-9_*:]+)*/$#i';
 		if(!preg_match($validUrlPattern, $urlPattern)) throw new InvalidUrlPatternException($urlPattern);
 		
 		// Build the regex pattern from the url pattern.
@@ -58,8 +73,16 @@ Class Router {
 		if(strpos($urlPattern, ':') !== false) {
 			// We have variables...
 			$find = '|:([a-z]+)|i';
-			$replace = "(?<$1>[^/]+)";
+			$replace = '(?<$1>[^/]+)';
 			$regex = preg_replace($find, $replace, $regex);
+		}
+		
+		// Collect any parameters without keys under the 'other' key.
+		if(!isset($parameters['other'])) $parameters['other'] = array();
+		foreach($parameters as $key => $val) {
+			if(is_string($key)) continue;
+			$parameters['other'][] = $val;
+			unset($parameters[$key]);
 		}
 		
 		// Register it.
@@ -76,13 +99,24 @@ Class Router {
 	 * @return mixed False if no connections matched or the connections parameters if a match is found.
 	 * @since 1.0
 	 */
-	public static function route($url) {
+	public static function route($url, $error = true) {
+		
+		// Append the trailing '/' if it's missing.
+		if(substr($url, -1) != '/') $url .= '/';
 		
 		// Checks each rule in order and returns the parameters of the first matched rule.
 		foreach(Router::$connections as $connection) {
 			$matches = array();
 			if(preg_match($connection['regex'], $url, $matches)) {
-				array_shift($matches);
+				array_shift($matches); // Ignore the 'overall' match
+				
+				// If parameters is just 'other' (required), infer the rest from any variables.
+				if(count($connection['parameters']) === 1) {
+					foreach($matches as $var => $val) {
+						if(is_int($var) or $var == 'other') continue;
+						$connection['parameters'][$var] = $val;
+					}
+				}
 				
 				// Check if any parameters use connection variables.
 				foreach($connection['parameters'] as &$parameter) {
@@ -94,34 +128,24 @@ Class Router {
 				}
 				
 				// Process 'other' parameters if they exist.
-				if(isset($matches['other'])) $connection['parameters']['other'] = explode('/', $matches['other']);
+				if(isset($matches['other'])) {
+					foreach(explode('/', $matches['other']) as $other) {
+						if(strpos($other, ':') === false) $connection['parameters']['other'][] = $other;
+						else {
+							list($var, $val) = explode(':', $other);
+							$connection['parameters']['other'][$var] = $val;
+						}
+					}
+				}
 				
 				// Return the parameters.
 				return $connection['parameters'];
 			}
 		}
 		
-		// No match was found, return false.
+		// No match was found, throw an exception or return false.
+		if($error) throw new NoConnectionException($url);
 		return false;
-		
-	}
-	
-	/**
-	 * Load connections from a file.
-	 *
-	 * Basically just includes the file, which is assumed to contain only Router::connect() method calls.
-	 *
-	 * @param string $file The file to load.
-	 * @return bool True if the file is succesfully loaded, false otherwise.
-	 * @since 1.0
-	 */
-	public static function loadConnections($file) {
-		
-		if(!file_exists($file)) throw new MissingConnectionFileException($file);
-		
-		include $file;
-		
-		return true;
 		
 	}
 	
@@ -135,7 +159,7 @@ Class Router {
  * @subpackage exceptions
  * @version 1.0
  */
-Class InvalidUrlPatternException extends MVCException {
+class InvalidUrlPatternException extends MVCException {
 	
 	/**
 	 * Sets the message.
@@ -153,25 +177,25 @@ Class InvalidUrlPatternException extends MVCException {
 }
 
 /**
- * Invalid connections file exception.
- *
- * An exception thrown when {@link Router::loadConnections()} encounters an invalid connection file.
- *
+ * No connection exception.
+ * 
+ * An exception thrown when {@link Router::route()} cannot match the given url to a connection.
+ * 
  * @subpackage exceptions
  * @version 1.0
  */
-Class MissingConnectionFileException extends MVCException {
+class NoConnectionException extends MVCException {
 	
 	/**
 	 * Sets the message.
-	 *
-	 * @param string $file The invalid connection file.
+	 * 
+	 * @param string $url The URL that could not be matched.
 	 * @return void
 	 * @since 1.0
 	 */
-	public function __construct($file) {
+	public function __construct($url) {
 		
-		$this->message = "Invalid connection file '$file', check it exists.";
+		$this->message = "No valid connection for url `$url`.";
 		
 	}
 	

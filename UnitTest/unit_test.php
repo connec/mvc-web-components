@@ -103,6 +103,7 @@ abstract class UnitTest {
 			$this->$method();
 			
 			// Print a success message.
+			$method = Inflector::humanize(Inflector::underscore($method));
 			echo "<li>$method <span style=\"color: #090;\">passed</span>.</li>";
 			
 			$this->runHook('postTest');
