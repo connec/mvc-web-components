@@ -97,6 +97,9 @@ class RelationshipFindTest extends UnitTest {
 		$this->assertEqual(
 			$posts = Post::findAll(),
 			array_map(function($post2) {return Post::findFirstById($post2->id); }, Post2::findAll()));
+		$this->post1->id = 1;
+		$this->post2->id = 2;
+		$this->post3->id = 3;
 		$this->assertEqual(
 			array_map(function($post) {return new Post(array_filter($post->getArray(), function($x) {return !is_object($x);}));}, $posts),
 			array($this->post1, $this->post2, $this->post3));

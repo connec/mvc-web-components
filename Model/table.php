@@ -260,11 +260,11 @@ class Table {
 		$class = $this->model;
 		if($options['type'] == 'first') {
 			$return = Database::getRow('array');
-			if($return) $return = new $class($return);
+			if($return) $return = new $class($return, true);
 			else $return = null;
 		}else {
 			$return = Database::getAll('array');
-			if(!empty($return)) $return = array_map(function($row) use($class) {return new $class($row);}, $return);
+			if(!empty($return)) $return = array_map(function($row) use($class) {return new $class($row, true);}, $return);
 		}
 		
 		return $return;

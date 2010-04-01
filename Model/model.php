@@ -35,7 +35,7 @@ use MVCWebComponents\MVCException,
  * 
  * For specific operations see the method documentations.
  * 
- * @version 0.9.3
+ * @version 0.9.4
  */
 abstract class Model extends ExtensibleStatic {
 	
@@ -173,6 +173,14 @@ abstract class Model extends ExtensibleStatic {
 	 * @since 0.9
 	 */
 	protected $related = array();
+	
+	/**
+	 * A flag representing whether this record has been modified.
+	 * 
+	 * @var bool
+	 * @since 0.9.4
+	 */
+	protected $touched = true;
 	
 	/**
 	 * An array of validation errors for this record.
@@ -318,16 +326,22 @@ abstract class Model extends ExtensibleStatic {
 	/**
 	 * Creates an instance of the model representing a record in the table.
 	 * 
-	 * @param array $fields A hash of fields and values to give the new record.  If no value is given for a field the schema default is used.
+	 * @param array $fields   A hash of fields and values to give the new record.  If no value is given for a field the schema default is used.
+	 * @param bool  $fromFind Whether this record was instantiated by a find operation.
 	 * @return void
 	 * @since 0.9
 	 */
-	public function __construct($fields = array()) {
+	public function __construct($fields = array(), $fromFind = false) {
 		
 		static::__init();
 		$this->fields = static::p()->table->getDefaultRecord();
+		
 		$this->runHook('beforeConstruct');
-		foreach(static::getFields() as $field) if(isset($fields[$field])) $this->fields[$field] = $fields[$field];
+		
+		foreach(static::getFields() as $field)
+			if(isset($fields[$field])) $this->fields[$field] = $fields[$field];
+		if($fromFind) $this->touched = false;
+		
 		$this->runHook('afterConstruct');
 		
 	}
@@ -372,10 +386,16 @@ abstract class Model extends ExtensibleStatic {
 	public function __set($field, $value) {
 		
 		// First check if it's setting the primary_key...
-		if($field == 'primary_key') $this->fields[static::getPrimaryKey()] = $value;
+		if($field == 'primary_key') {
+			$this->fields[static::getPrimaryKey()] = $value;
+			$this->touched = true;
+		}
 		
 		// Check fields first...
-		elseif(in_array($field, static::getFields())) $this->fields[$field] = $value;
+		elseif(in_array($field, static::getFields())) {
+			$this->fields[$field] = $value;
+			$this->touched = true;
+		}
 		
 		// Check the related models...
 		elseif(isset(static::p()->hasOne[$field]) or isset(static::p()->hasMany[Inflector::singularize($field)]) or isset(static::p()->belongsTo[$field])) $this->related[$field] = $value;
@@ -668,10 +688,12 @@ abstract class Model extends ExtensibleStatic {
 		if($options['validate']) if($this->validate() !== true) return false;
 		if($function == 'update') {
 			$return[] = static::p()->table->update($this);
+			if(end($return)) $this->touched = false;
 		}else {
 			if($id = static::p()->table->insert($this)) {
 				if(is_int($id)) $this->primary_key = $id;
 				$return[] = true;
+				$this->touched = false;
 			}else $return[] = false;
 		}
 		

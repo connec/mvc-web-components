@@ -31,7 +31,10 @@ class FindTest extends UnitTest {
 	
 	public function TestDefaults() {
 		
-		$this->assertEqual(User::find(array(), false), array($this->bob, $this->jim));
+		list($jim, $bob) = User::findAll(array(), false);
+		$jim->id = 1; // Force the 'touched' flag to change.
+		$bob->id = 2;
+		$this->assertEqual(array($jim, $bob), array($this->bob, $this->jim));
 		
 	}
 	
@@ -47,7 +50,10 @@ class FindTest extends UnitTest {
 		);
 		
 		// These options should find all records.
-		$this->assertEqual(User::find($options, false), array($this->bob, $this->jim));
+		list($bob, $jim) = User::findAll($options, false);
+		$bob->id = 1;
+		$jim->id = 2;
+		$this->assertEqual(array($bob, $jim), array($this->bob, $this->jim));
 		
 	}
 	
@@ -55,7 +61,9 @@ class FindTest extends UnitTest {
 	public function TestFindFirst() {
 		
 		$options = array('type' => 'first');
-		$this->assertEqual(User::find($options, false), $this->bob);
+		$bob = User::find($options, false);
+		$bob->id = 1;
+		$this->assertEqual($bob, $this->bob);
 		
 	}
 	
@@ -63,13 +71,19 @@ class FindTest extends UnitTest {
 	public function TestOrderBy() {
 		
 		$options = array('orderBy' => 'id desc', 'type' => 'first');
-		$this->assertEqual(User::find($options, false), $this->jim);
+		$jim = User::find($options, false);
+		$jim->id = 2;
+		$this->assertEqual($jim, $this->jim);
 		
 		$options['orderBy'] = 'id asc';
-		$this->assertEqual(User::find($options, false), $this->bob);
+		$bob = User::find($options, false);
+		$bob->id = 1;
+		$this->assertEqual($bob, $this->bob);
 		
 		$options['orderBy'] = 'id';
-		$this->assertEqual(User::find($options, false), $this->bob);
+		$bob = User::find($options, false);
+		$bob->id = 1;
+		$this->assertEqual($bob, $this->bob);
 		
 	}
 	
@@ -77,10 +91,14 @@ class FindTest extends UnitTest {
 	public function TestLimit() {
 		
 		$options = array('limit' => 1);
-		$this->assertEqual(User::find($options, false), array($this->bob));
+		list($bob) = User::find($options, false);
+		$bob->id = 1;
+		$this->assertEqual(array($bob), array($this->bob));
 		
 		$options['limit'] = '1, 1';
-		$this->assertEqual(User::find($options, false), array($this->jim));
+		list($jim) = User::find($options, false);
+		$jim->id = 2;
+		$this->assertEqual(array($jim), array($this->jim));
 		
 	}
 	
@@ -91,11 +109,15 @@ class FindTest extends UnitTest {
 		
 		// Start by testing a single condition.
 		$options['conditions'] = array('name' => 'Bob');
-		$this->assertEqual(User::find($options, false), array($this->bob));
+		list($bob) = User::find($options, false);
+		$bob->id = 1;
+		$this->assertEqual(array($bob), array($this->bob));
 		
 		// A multi-condition with a condition operator.
 		$options['conditions'] = array('name' => '!= Bob', 'id' => '> 1');
-		$this->assertEqual(User::find($options, false), array($this->jim));
+		list($jim) = User::find($options, false);
+		$jim->id = 2;
+		$this->assertEqual(array($jim), array($this->jim));
 		
 		// A failing condition.
 		$options['conditions'] = array('name' => 'Bob', 'id' => 2);
@@ -109,7 +131,10 @@ class FindTest extends UnitTest {
 		$options['operator'] = 'or';
 		$options['type'] = 'all';
 		$options['orderBy'] = 'id desc';
-		$this->assertEqual(User::find($options), array($this->jim, $this->bob));
+		list($jim, $bob) = User::find($options);
+		$bob->id = 1;
+		$jim->id = 2;
+		$this->assertEqual(array($jim, $bob), array($this->jim, $this->bob));
 		
 	}
 	

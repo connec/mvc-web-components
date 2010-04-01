@@ -12,7 +12,10 @@ class CallStaticTest extends UnitTest {
 	
 	public function TestFindAll() {
 		
-		$this->assertEqual(User::findAll(array(), false), array(
+		list($bob,$jim) = User::findAll(array(), false);
+		$bob->id = 1; // Force the 'touched' flag to change.
+		$jim->id = 2;
+		$this->assertEqual(array($bob, $jim), array(
 			new User(array(
 				'id' => 1,
 				'name' => 'Bob',
@@ -31,7 +34,9 @@ class CallStaticTest extends UnitTest {
 	
 	public function TestFindFirst() {
 		
-		$this->assertEqual(User::findFirst(array(), false), new User(array(
+		$bob = User::findFirst(array(), false);
+		$bob->id = 1;
+		$this->assertEqual($bob, new User(array(
 			'id' => 1,
 			'name' => 'Bob',
 			'password' => 'bobsnewpass',
@@ -43,7 +48,9 @@ class CallStaticTest extends UnitTest {
 	
 	public function TestFindAllBy() {
 		
-		$this->assertEqual(User::findAllById(2, array(), false), array(
+		list($jim) = User::findAllById(2, array(), false);
+		$jim->id = 2;
+		$this->assertEqual(array($jim), array(
 			new User(array(
 				'id' => 2,
 				'name' => 'Jim',
@@ -56,7 +63,9 @@ class CallStaticTest extends UnitTest {
 	
 	public function TestFindFirstBy() {
 		
-		$this->assertEqual(User::findFirstByName('Jim', array(), false), new User(array(
+		$jim = User::findFirstByName('Jim', array(), false);
+		$jim->id = 2;
+		$this->assertEqual($jim, new User(array(
 			'id' => 2,
 			'name' => 'Jim',
 			'password' => 'jimspass',
@@ -65,7 +74,9 @@ class CallStaticTest extends UnitTest {
 		)));
 		
 		// Test a longer-than-one-word field
-		$this->assertEqual(User::findFirstByUserGroupId(1, array(), false), new User(array(
+		$bob = User::findFirstByUserGroupId(1, array(), false);
+		$bob->id = 1;
+		$this->assertEqual($bob, new User(array(
 			'id' => 1,
 			'name' => 'Bob',
 			'password' => 'bobsnewpass',
