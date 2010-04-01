@@ -12,7 +12,7 @@ use MVCWebComponents\MVCException;
 /**
  * Gets an array of parameters from an input URL using defined patterns.
  * 
- * @version 1.2
+ * @version 1.3
  */
 class Router {
 	
@@ -31,6 +31,14 @@ class Router {
 	 * @since 1.0
 	 */
 	protected static $connections = array();
+	
+	/**
+	 * The connection that matched for the last call to {@link route()}.
+	 * 
+	 * @var array
+	 * @since 1.3
+	 */
+	public static $connection = null;
 	
 	/**
 	 * Clears all registered connections.  Useful for testing.
@@ -96,10 +104,13 @@ class Router {
 	 * Searches registered connections for a URL pattern matching $url and returns the associated parameters.
 	 *
 	 * @param string $url The URL to route.
+	 * @param bool   $error When set to true, an exception if thrown when no matching connection is found.
 	 * @return mixed False if no connections matched or the connections parameters if a match is found.
 	 * @since 1.0
 	 */
 	public static function route($url, $error = true) {
+		
+		static::$connection = null;
 		
 		// Append the trailing '/' if it's missing.
 		if(substr($url, -1) != '/') $url .= '/';
@@ -108,6 +119,8 @@ class Router {
 		foreach(Router::$connections as $connection) {
 			$matches = array();
 			if(preg_match($connection['regex'], $url, $matches)) {
+				static::$connection = $connection;
+				
 				array_shift($matches); // Ignore the 'overall' match
 				
 				// If parameters is just 'other' (required), infer the rest from any variables.
