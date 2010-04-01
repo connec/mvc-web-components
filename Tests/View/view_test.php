@@ -29,8 +29,8 @@ class ViewTest extends UnitTest {
 	
 	public function TestView() {
 		
-		View::setPrePath('tpl');
-		View::setPostPath('php');
+		View::addPrePath('tpl');
+		View::addPostPath('php');
 		$view = new View('.');
 		$this->assertStrict($view->getTemplate(), 'tpl.php');
 		

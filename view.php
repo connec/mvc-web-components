@@ -12,26 +12,26 @@ namespace MVCWebComponents;
 /**
  * Generates HTML code based on a template and given variables.
  * 
- * @version 0.4.2
+ * @version 0.4.3
  */
 class View
 {
 	
 	/**
-	 * A path to prepend to any given template paths for all templates.
+	 * An array of possible paths to prepend to any given template paths for all templates.
 	 * 
 	 * @var string
-	 * @since 0.4
+	 * @since 0.4.3
 	 */
-	protected static $prePath = '';
+	protected static $prePaths = array();
 	
 	/**
-	 * A path/extension to append to any given template paths for all templates.
+	 * An array of possible paths/extensions to append to any given template paths for all templates.
 	 * 
 	 * @var string
-	 * @since 0.4
+	 * @since 0.4.3
 	 */
-	protected static $postPath = '';
+	protected static $postPaths = array();
 	
 	/**
 	 * An associative array of variable => 'value' pairs to pass to the template.
@@ -74,26 +74,28 @@ class View
 	protected $return = false;
 	
 	/**
-	 * Set the prePath.
+	 * Adds an arbitrary number of pre-paths to the array of pre-paths.
 	 * 
-	 * @param string $prePath
-	 * @since 0.4
+	 * @param string $path
+	 * @return void
+	 * @since 0.4.3
 	 */
-	public static function setPrePath($prePath) {
+	public static function addPrePath($path) {
 		
-		static::$prePath = $prePath;
+		static::$prePaths = array_merge(func_get_args(), static::$prePaths);
 		
 	}
 	
 	/**
-	 * Set the postPath.
+	 * Adds an arbitrary number of post-paths to the postPaths array.
 	 * 
-	 * @param string $postPath
-	 * @since 0.4
+	 * @param string $path
+	 * @return void
+	 * @since 0.4.3
 	 */
-	public static function setPostPath($postPath) {
+	public static function addPostPath($path) {
 		
-		static::$postPath = $postPath;
+		static::$postPaths = array_merge(func_get_args(), static::$postPaths);
 		
 	}
 	
@@ -119,8 +121,19 @@ class View
 	 */
 	public function __construct($template) {
 		
-		$this->template = static::$prePath . $template . static::$postPath;
-		$this->checkTemplate();
+		// Replace forward-slashes by the system's directory separator.
+		$template = str_replace('/', DIRECTORY_SEPARATOR, $template);
+		
+		// Find a suitable pre/post path combination.
+		$tried = array();
+		foreach(static::$prePaths as $prePath) {
+			foreach(static::$postPaths as $postPath) {
+				$this->template = "$prePath$template$postPath";
+				if($this->checkTemplate(false)) return;
+				$tried[] = $this->template;
+			}
+		}
+		throw new MissingTemplateException($template, $tried);
 		
 	}
 	
@@ -207,14 +220,15 @@ class View
 	/**
 	 * Checks the view's template exists, and throws an exception otherwise.
 	 * 
+	 * @param bool $error When true, throws an exception.
 	 * @return bool True if the template exists and is readable, false otherwise.
 	 * @throws {@link MissingTemplateException} Thrown when the template cannot be found/read.
 	 * @since 0.4
 	 */
-	public function checkTemplate() {
+	public function checkTemplate($error = true) {
 		
 		if(is_readable($this->template)) return true;
-		throw new MissingTemplateException($this->template);
+		if($error) throw new MissingTemplateException($this->template);
 		return false;
 		
 	}
@@ -262,9 +276,11 @@ class MissingTemplateException extends MVCException {
 	 * @return void
 	 * @since 1.0
 	 */
-	public function __construct($template) {
+	public function __construct($template, $tried = array()) {
 		
-		$this->message = "Can not read template `$template` for view.  Ensure it exists and is readable.";
+		$this->message = "Can not read template `$template` for view.  ";
+		if(!empty($tried)) $this->message .= 'Tried:' . print_r($tried, true);
+		$this->message .= "Ensure it exists and is readable.";
 		
 	}
 	
