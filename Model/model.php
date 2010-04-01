@@ -180,7 +180,7 @@ abstract class Model extends ExtensibleStatic {
 	 * @var bool
 	 * @since 0.9.4
 	 */
-	protected $touched = true;
+	public $touched = true;
 	
 	/**
 	 * An array of validation errors for this record.
@@ -686,15 +686,10 @@ abstract class Model extends ExtensibleStatic {
 		else $function = 'update';
 		
 		if($options['validate']) if($this->validate() !== true) return false;
-		if($function == 'update') {
-			$return[] = static::p()->table->update($this);
-			if(end($return)) $this->touched = false;
-		}else {
-			if($id = static::p()->table->insert($this)) {
-				if(is_int($id)) $this->primary_key = $id;
-				$return[] = true;
-				$this->touched = false;
-			}else $return[] = false;
+		if($function == 'update') $return[] = static::p()->table->update($this);
+		else {
+			if(static::p()->table->insert($this)) $return[] = true;
+			else $return[] = false;
 		}
 		
 		if($options['cascade']) {

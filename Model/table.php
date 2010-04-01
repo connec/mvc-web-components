@@ -294,7 +294,11 @@ class Table {
 		$query = 'insert into `' . $this->name . "` (" . implode(', ', $fields) . ') values (' . implode(', ', $values) . ')';
 		if(Database::query($query)) {
 			$this->rowCount += 1;
-			if(Database::getInsertId()) return Database::getInsertId();
+			if(Database::getInsertId()) {
+				$record->primary_key = Database::getInsertId();
+				$record->touched = false;
+				return Database::getInsertId();
+			}
 			return true;
 		}else return false;
 		
@@ -322,7 +326,10 @@ class Table {
 		}
 		
 		$query = 'update `' . $this->name . '` set ' . implode(', ', $updates) . ' where `' . $this->primaryKey . "` = '$record->primary_key' limit 1";
-		if(Database::query($query)) return true;
+		if(Database::query($query)) {
+			$record->touched = false;
+			return true;
+		}
 		else return false;
 		
 	}

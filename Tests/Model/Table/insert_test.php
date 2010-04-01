@@ -23,7 +23,6 @@ class InsertTest extends UnitTest {
 			'content' => 'Yo Momma',
 			'time' => time()));
 		$this->assertStrict($this->table->insert($post), 1);
-		$post->id = 1;
 		$this->assertEqual($this->table->find(array('type' => 'first', 'conditions' => array('id' => 1))), $post);
 		
 		// Failing test: duplicate primary key
@@ -40,7 +39,6 @@ class InsertTest extends UnitTest {
 			'content' => "\n\0<>!?$%';SELECT * FROM `secrit`;&^\"'\'<|24ZY <><4|24<T3|2Z",
 			'time' => time()));
 		$this->assertStrict($this->table->insert($post), 2);
-		$post->id = 2;
 		$this->assertEqual($this->table->find(array('type' => 'first', 'conditions' => array('id' => 2))), $post);
 		
 	}

@@ -23,7 +23,6 @@ class DeleteTest extends UnitTest {
 			'content' => 'Post Content',
 			'time' => time()));
 		$this->assertEqual($this->table->insert($post), true);
-		$post->id = 1;
 		$this->assertEqual($this->table->find(array('type' => 'first', 'conditions' => array('id' => 1))), $post);
 		
 		$this->assertTrue($this->table->delete($post));
