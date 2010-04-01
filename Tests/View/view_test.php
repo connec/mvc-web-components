@@ -79,6 +79,23 @@ STRING;
 		
 	}
 	
+	public function TestPartial() {
+		
+		View::addPrePath('');
+		
+		$view = new View('.');
+		$view->header = View::partial('p.', array('content' => 'test'));
+		
+		$should_be = <<<STRING
+<h1><p>test</p></h1>
+<p>
+	tpl.php</p>
+STRING;
+		
+		$this->assertStrict($view->render(true), $should_be);
+		
+	}
+	
 }
 
 ?>

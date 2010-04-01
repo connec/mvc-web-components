@@ -12,7 +12,7 @@ namespace MVCWebComponents;
 /**
  * Generates HTML code based on a template and given variables.
  * 
- * @version 0.4.3
+ * @version 0.4.4
  */
 class View
 {
@@ -109,6 +109,22 @@ class View
 	public static function registerGlobal($key, $value) {
 		
 		static::$globalRegister[$key] = $value;
+		
+	}
+	
+	/**
+	 * Helper to create a view, assign some variables and return the result.
+	 * 
+	 * @param string $template The partial template to use.
+	 * @param array  $vars     An array of 'var' => value pairs
+	 * @return string The result of the partial
+	 * @since 0.4.4
+	 */
+	public static function partial($template, $vars = array()) {
+		
+		$partial = new View($template);
+		foreach($vars as $var => $value) $partial->register($var, $value);
+		return $partial->render(true);
 		
 	}
 	
