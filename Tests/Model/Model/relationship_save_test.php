@@ -79,6 +79,7 @@ class RelationshipSaveTest extends UnitTest {
 		unset($post2->id);
 		$post2->title = 'Updated Title';
 		$this->assertTrue($post2->save(array('cascade' => true, 'validate' => false)));
+		$post2->id = 2;
 		$this->assertFalse(Post2::findFirst(array('orderBy' => 'id desc')) == Post2::findFirst());
 		$this->assertEqual(Post2::findFirst(array('orderBy' => 'id desc')), $post2);
 		$this->assertEqual(Post2::findFirst(array('orderBy' => 'id desc'))->Author->id, $post2->author_id);
@@ -96,6 +97,7 @@ class RelationshipSaveTest extends UnitTest {
 		$user = User::findFirst();
 		$user->Posts = $posts;
 		$this->assertTrue($user->save(array('cascade' => true, 'validate' => false)));
+		$user->id = 1;
 		$this->assertEqual(User::findFirst(), $user);
 		$this->assertEqual(User::findFirst()->Posts[0]->author_id, $user->id);
 		

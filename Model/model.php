@@ -385,21 +385,20 @@ abstract class Model extends ExtensibleStatic {
 	 */
 	public function __set($field, $value) {
 		
+		$this->touched = true;
+		
 		// First check if it's setting the primary_key...
-		if($field == 'primary_key') {
-			$this->fields[static::getPrimaryKey()] = $value;
-			$this->touched = true;
-		}
+		if($field == 'primary_key') $this->fields[static::getPrimaryKey()] = $value;
 		
 		// Check fields first...
-		elseif(in_array($field, static::getFields())) {
-			$this->fields[$field] = $value;
-			$this->touched = true;
-		}
+		elseif(in_array($field, static::getFields())) $this->fields[$field] = $value;
 		
 		// Check the related models...
 		elseif(isset(static::p()->hasOne[$field]) or isset(static::p()->hasMany[Inflector::singularize($field)]) or isset(static::p()->belongsTo[$field])) $this->related[$field] = $value;
-		else throw new InvalidFieldException($field, static::p()->name);
+		else {
+			$this->touched = false;
+			throw new InvalidFieldException($field, static::p()->name);
+		}
 		
 	}
 	
@@ -427,10 +426,15 @@ abstract class Model extends ExtensibleStatic {
 	 */
 	public function __unset($field) {
 		
+		$this->touched = true;
+		
 		if($field == 'primary_key') unset($this->fields[static::getPrimaryKey()]);
 		elseif(in_array($field, static::getFields())) unset($this->fields[$field]);
 		elseif(isset($this->related[$field])) unset($this->related[$field]);
-		else throw new InvalidFieldException($field, static::p()->name);
+		else {
+			$this->touched = false;
+			throw new InvalidFieldException($field, static::p()->name);
+		}
 		
 	}
 	

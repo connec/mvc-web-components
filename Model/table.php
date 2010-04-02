@@ -282,6 +282,7 @@ class Table {
 	public function insert($record) {
 		
 		if(!($record instanceof Model)) throw new BadArgumentException('Table::insert() can only insert Model instances.');
+		if(!$record->touched) return true;
 		
 		$fields = array();
 		$values = array();
@@ -318,6 +319,7 @@ class Table {
 		
 		if(!($record instanceof Model)) throw new BadArgumentException('Table::update() can only update Model instances.');
 		if(!isset($record->primary_key))  throw new BadArgumentException('Table::update() requires the given record to include the primary key of the item to update.');
+		if(!$record->touched) return true;
 		
 		$updates = array();
 		foreach($this->fields as $field) {
