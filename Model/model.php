@@ -11,7 +11,7 @@ use MVCWebComponents\MVCException,
 	MVCWebComponents\BadArgumentException,
 	MVCWebComponents\Inflector,
 	MVCWebComponents\Database\Database,
-	MVCWebComponents\ExtensibleStatic;
+	MVCWebComponents\Hookable;
 
 /**
  * The Model class is an extensible class to allow 'zero configuration' CRUD + extras database interaction.
@@ -35,9 +35,9 @@ use MVCWebComponents\MVCException,
  * 
  * For specific operations see the method documentations.
  * 
- * @version 0.9.4
+ * @version 0.9.5
  */
-abstract class Model extends ExtensibleStatic {
+abstract class Model extends Hookable {
 	
 	/**
 	 * Table name to use.
@@ -125,6 +125,18 @@ abstract class Model extends ExtensibleStatic {
 	 * @see $hasOne, $hasMany, find()
 	 */
 	protected static $belongsTo = array();
+	
+	/**
+	 * An array of valid hooks for Hookable.
+	 * 
+	 * @var array
+	 * @since 0.9.5
+	 */
+	protected static $hooks = array(
+		'beforeConstruct',
+		'afterConstruct',
+		'beforeSave',
+		'afterSave');
 	
 	/**
 	 * An array of method names to execute before record construction.
@@ -280,32 +292,6 @@ abstract class Model extends ExtensibleStatic {
 	}
 	
 	/**
-	 * Runs any hooks named under $name.
-	 * 
-	 * @param string $name The name of the hook to run.
-	 * @param bool $required If set to true an exception will be raised if no methods are defined under $name.
-	 * @return bool The reduced value of the return values of the hook methods.  Returns true if all hooks return true, false otherwise.
-	 * @throws BadConfigurationException Thrown when a non-existant method is encountered.
-	 * @throws BadArgumentException Thrown when the provided $name is not a valid hook.
-	 * @since 0.9.1
-	 */
-	public function runHook($name, $required = false) {
-		
-		if(!isset(static::$$name)) throw new BadArgumentException("Invalid hook name '$name' given to " . static::getName() . "::runHook(), see documentation for valid hooks.");
-		if(!empty(static::$$name)) {
-			$return = array();
-			foreach(static::$$name as $method) {
-				if(method_exists($this, $method)) $return[] = $this->$method();
-				else throw new BadConfigurationException("Model '" . static::getName() . "' contains a bad method '$method' for hook '$name'.  Ensure the method exists.");
-			}
-			return array_reduce($return, function($a, $b) {return $a and $b;}, true);
-		}
-		if($required) throw new MVCException("No methods found for required hook '$name' in " . static::getName() . ".");
-		else return true;
-		
-	}
-	
-	/**
 	 * Returns an StdClass with all the current static values (very useful for debugging)
 	 * 
 	 * @param bool $return When true, returns the object instead of dumping it.
@@ -336,13 +322,13 @@ abstract class Model extends ExtensibleStatic {
 		static::__init();
 		$this->fields = static::p()->table->getDefaultRecord();
 		
-		$this->runHook('beforeConstruct');
+		$this->runHook('beforeConstruct', array(&$this));
 		
 		foreach(static::getFields() as $field)
 			if(isset($fields[$field])) $this->fields[$field] = $fields[$field];
 		if($fromFind) $this->touched = false;
 		
-		$this->runHook('afterConstruct');
+		$this->runHook('afterConstruct', array(&$this));
 		
 	}
 	
@@ -674,7 +660,7 @@ abstract class Model extends ExtensibleStatic {
 		if(!isset($options['validate'])) $options['validate'] = true;
 		$return = array();
 		
-		$this->runHook('beforeSave');
+		$this->runHook('beforeSave', array(&$this));
 		
 		if($options['cascade']) {
 			foreach(static::p()->belongsTo as $alias => $relation) {
@@ -712,7 +698,7 @@ abstract class Model extends ExtensibleStatic {
 			}
 		}
 		
-		$this->runHook('afterSave');
+		$this->runHook('afterSave', array(&$this));
 		
 		return array_reduce($return, function($a,$b){return $a and $b;}, true);
 		

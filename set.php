@@ -26,7 +26,6 @@ abstract class Set extends ExtensibleStatic {
 	 */
 	protected static function setInit() {
 		
-		parent::__init();
 		if(!isset(static::p()->register)) static::p()->register = array();
 		
 	}

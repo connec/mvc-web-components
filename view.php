@@ -14,8 +14,7 @@ namespace MVCWebComponents;
  * 
  * @version 0.4.4
  */
-class View
-{
+class View extends Hookable {
 	
 	/**
 	 * An array of possible paths to prepend to any given template paths for all templates.
@@ -140,15 +139,21 @@ class View
 		// Replace forward-slashes by the system's directory separator.
 		$template = str_replace('/', DIRECTORY_SEPARATOR, $template);
 		
+		static::runHook('beforeConstruct', array(&$template));
+		
 		// Find a suitable pre/post path combination.
 		$tried = array();
 		foreach(static::$prePaths as $prePath) {
 			foreach(static::$postPaths as $postPath) {
 				$this->template = "$prePath$template$postPath";
-				if($this->checkTemplate(false)) return;
+				if($this->checkTemplate(false)) {
+					static::runHook('afterConstruct', array(&$this));
+					return;
+				}
 				$tried[] = $this->template;
 			}
 		}
+		
 		throw new MissingTemplateException($template, $tried);
 		
 	}
@@ -214,6 +219,8 @@ class View
 		
 		$this->return = (bool)$return; // Store $return in an instance variable for improved sandboxing.
 		
+		static::runHook('beforeRender', array(&$this));
+		
 		// Extract the registers into the local scope.
 		extract(static::$globalRegister);
 		extract($this->register);
@@ -226,6 +233,8 @@ class View
 		
 		// Store the result.
 		$this->result = ob_get_clean();
+		
+		static::runHook('afterRender', array(&$this));
 		
 		// Return or display it.
 		if($this->return) return $this->result;

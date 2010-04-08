@@ -5,14 +5,20 @@ use MVCWebComponents\UnitTest\UnitTest, MVCWebComponents\Model\Model;
 
 class Post extends Model {
 	
-	protected static $afterConstruct = array('setStringTime');
-	protected static $beforeSave = array('setTime');
+	protected static $afterConstruct = array(array('static', 'setStringTime'));
 	
 	public $stringTime = '';
 	
-	protected function setStringTime() {
+	public function __construct($fields = array(), $fromFind = false) {
 		
-		$this->stringTime = date('Y-m-d H:i:s', $this->time);
+		$this->addHook('beforeSave', array($this, 'setTime'));
+		parent::__construct($fields, $fromFind);
+		
+	}
+	
+	protected static function setStringTime($model) {
+		
+		$model->stringTime = date('Y-m-d H:i:s', $model->time);
 		
 	}
 	

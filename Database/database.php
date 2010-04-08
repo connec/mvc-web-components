@@ -8,7 +8,8 @@
 namespace MVCWebComponents\Database;
 use \MVCWebComponents\Inflector,
 	\MVCWebComponents\MVCException,
-	\MVCWebComponents\BadArgumentException;
+	\MVCWebComponents\BadArgumentException,
+	\MVCWebComponents\Hookable;
 
 /**
  * Access point for database operations.
@@ -17,7 +18,7 @@ use \MVCWebComponents\Inflector,
  *
  * @version 1.3
  */
-class Database {
+class Database extends Hookable {
 	
 	/**
 	 * An instance of the database driver being used.
@@ -47,26 +48,30 @@ class Database {
 	public static $debugging = false;
 	
 	/**
-	 * Hook to run before a query is executed.
+	 * Array of available hooks for Hookable.
 	 * 
-	 * @param string $sql The SQL query being performed.
-	 * @return bool If false the query is cancelled.
+	 * @var array
 	 * @since 1.3
 	 */
-	protected static function beforeQuery(&$sql) {
-		
-		return true;
-		
-	}
+	protected static $hooks = array(
+		'beforeQuery',
+		'afterQuery');
 	
 	/**
-	 * Hook to run after a query is executed.
+	 * Callbacks to run before a query is executed.
 	 * 
-	 * @param array $query Details of the result of the query.
-	 * @return void
+	 * @var array
 	 * @since 1.3
 	 */
-	protected static function afterQuery(&$query) {}
+	protected static $beforeQuery = array();
+	
+	/**
+	 * Callbacks to run after a query is executed.
+	 * 
+	 * @var array
+	 * @since 1.3
+	 */
+	protected static $afterQuery = array();
 	
 	/**
 	 * Instantiates and sets the driver.
@@ -122,7 +127,7 @@ class Database {
 		
 		if(!is_object(static::$driver)) throw new NoConnectionException('query');
 		
-		static::beforeQuery($sql);
+		static::runHook('beforeQuery', array(&$sql));
 		
 		static::$queries[] = array();
 		$query =& static::$queries[count(static::$queries) - 1];
@@ -143,7 +148,7 @@ class Database {
 		$query['num_affected_rows'] = static::getNumAffectedRows();
 		$query['time'] = microtime(true) - $start;
 		
-		static::afterQuery($query);
+		static::runHook('afterQuery', array(&$query));
 		
 		return true;
 		
