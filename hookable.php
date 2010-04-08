@@ -14,7 +14,7 @@ namespace MVCWebComponents;
  * 
  * @version 1.0
  */
-class Hookable extends ExtensibleStatic {
+abstract class Hookable extends ExtensibleStatic {
 	
 	/**
 	 * Add a callback to a particular hook.
