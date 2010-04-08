@@ -15,7 +15,7 @@ use \MVCWebComponents\Inflector,
  *
  * Provides basic database abstraction functionality and additional useful features.
  *
- * @version 1.2
+ * @version 1.3
  */
 class Database {
 	
@@ -47,6 +47,28 @@ class Database {
 	public static $debugging = false;
 	
 	/**
+	 * Hook to run before a query is executed.
+	 * 
+	 * @param string $sql The SQL query being performed.
+	 * @return bool If false the query is cancelled.
+	 * @since 1.3
+	 */
+	protected static function beforeQuery(&$sql) {
+		
+		return true;
+		
+	}
+	
+	/**
+	 * Hook to run after a query is executed.
+	 * 
+	 * @param array $query Details of the result of the query.
+	 * @return void
+	 * @since 1.3
+	 */
+	protected static function afterQuery(&$query) {}
+	
+	/**
 	 * Instantiates and sets the driver.
 	 *
 	 * @param string $driverName The name of the driver to use.
@@ -59,7 +81,7 @@ class Database {
 		
 		$driverName = '\MVCWebComponents\Database\\' . Inflector::camelize($driverName);
 		if(!class_exists($driverName) or !in_array('MVCWebComponents\Database\DatabaseDriverInterface', class_implements($driverName))) throw new InvalidDriverException($driverName);
-		self::$driver = new $driverName;
+		static::$driver = new $driverName;
 		
 	}
 	
@@ -80,8 +102,8 @@ class Database {
 		if(!is_string($driverName)) throw new BadArgumentException("Database::connect() expects parameter 1 to be a string, '" . gettype($driverName) . "' given.");
 		if(!is_array($options)) throw new BadArgumentException("Database::connect() expects parameter 2 to be an array, '" . gettype($options) . "' given.");
 		
-		self::setDriver($driverName);
-		if(!self::$driver->connect($options)) throw new DatabaseConnectionException($driverName, self::getError());
+		static::setDriver($driverName);
+		if(!static::$driver->connect($options)) throw new DatabaseConnectionException($driverName, static::getError());
 		return true;
 		
 	}
@@ -98,10 +120,12 @@ class Database {
 	 */
 	public static function query($sql) {
 		
-		if(!is_object(self::$driver)) throw new NoConnectionException('query');
+		if(!is_object(static::$driver)) throw new NoConnectionException('query');
 		
-		self::$queries[] = array();
-		$query =& self::$queries[count(self::$queries) - 1];
+		static::beforeQuery($sql);
+		
+		static::$queries[] = array();
+		$query =& static::$queries[count(static::$queries) - 1];
 		$query['sql'] = $sql;
 		$query['insert_id'] = false;
 		$query['num_result_rows'] = false;
@@ -111,13 +135,16 @@ class Database {
 		
 		$start = microtime(true);
 		
-		if(self::$debugging and in_array(reset(explode(' ', $sql)), array('insert', 'update', 'delete'))) echo "$sql\n";
-		elseif(!self::$driver->query($sql)) throw new BadQueryException($sql, self::getError());
+		if(static::$debugging and in_array(reset(explode(' ', $sql)), array('insert', 'update', 'delete'))) echo "$sql\n";
+		elseif(!static::$driver->query($sql)) throw new BadQueryException($sql, static::getError());
 		
-		$query['insert_id'] = self::getInsertId();
-		$query['num_result_rows'] = self::getNumResultRows();
-		$query['num_affected_rows'] = self::getNumAffectedRows();
+		$query['insert_id'] = static::getInsertId();
+		$query['num_result_rows'] = static::getNumResultRows();
+		$query['num_affected_rows'] = static::getNumAffectedRows();
 		$query['time'] = microtime(true) - $start;
+		
+		static::afterQuery($query);
+		
 		return true;
 		
 	}
@@ -135,13 +162,13 @@ class Database {
 	 */
 	public static function getRow($type = 'object') {
 		
-		if(!is_object(self::$driver)) throw new NoConnectionException('query');
+		if(!is_object(static::$driver)) throw new NoConnectionException('query');
 		
-		if($type == 'array') return self::$driver->getArray();
-		elseif($type == 'object') return self::$driver->getObject();
+		if($type == 'array') return static::$driver->getArray();
+		elseif($type == 'object') return static::$driver->getObject();
 		else {
-			if(is_string($type) and class_exists($type)) return self::$driver->getObject($type);
-			elseif(is_array($type) and isset($type[0]) and isset($type[1]) and is_string($type[0]) and is_array($type[1])) return self::$driver->getObject($type[0], $type[1]);
+			if(is_string($type) and class_exists($type)) return static::$driver->getObject($type);
+			elseif(is_array($type) and isset($type[0]) and isset($type[1]) and is_string($type[0]) and is_array($type[1])) return static::$driver->getObject($type[0], $type[1]);
 			else throw new BadArgumentException("Database::getRow() expects parameter 1 to be 'object', 'array', 'className' or array('className', array params), '" . print_r($type, true) . "' given.");
 		}
 		
@@ -159,11 +186,11 @@ class Database {
 	 */
 	public static function getAll($type = 'object') {
 		
-		if(!is_object(self::$driver)) throw new NoConnectionException('query');
+		if(!is_object(static::$driver)) throw new NoConnectionException('query');
 		
 		$return = array();
-		self::rewind();
-		while($row = self::getRow($type)) $return[] = $row;
+		static::rewind();
+		while($row = static::getRow($type)) $return[] = $row;
 		return $return;
 		
 	}
@@ -177,9 +204,9 @@ class Database {
 	 */
 	public static function rewind() {
 		
-		if(!is_object(self::$driver)) throw new NoConnectionException('query');
+		if(!is_object(static::$driver)) throw new NoConnectionException('query');
 		
-		self::$driver->rewind();
+		static::$driver->rewind();
 		
 	}
 	
@@ -192,9 +219,9 @@ class Database {
 	 */
 	public static function getError() {
 		
-		if(!is_object(self::$driver)) throw new NoConnectionException('query');
+		if(!is_object(static::$driver)) throw new NoConnectionException('query');
 		
-		return self::$driver->getError();
+		return static::$driver->getError();
 		
 	}
 	
@@ -207,9 +234,9 @@ class Database {
 	 */
 	public static function getInsertId() {
 		
-		if(!is_object(self::$driver)) throw new NoConnectionException('query');
+		if(!is_object(static::$driver)) throw new NoConnectionException('query');
 		
-		return self::$driver->getInsertId();
+		return static::$driver->getInsertId();
 		
 	}
 	
@@ -222,9 +249,9 @@ class Database {
 	 */
 	public static function getNumResultRows() {
 		
-		if(!is_object(self::$driver)) throw new NoConnectionException('query');
+		if(!is_object(static::$driver)) throw new NoConnectionException('query');
 		
-		return self::$driver->getNumResultRows();
+		return static::$driver->getNumResultRows();
 		
 	}
 	
@@ -237,9 +264,9 @@ class Database {
 	 */
 	public static function getNumAffectedRows() {
 		
-		if(!is_object(self::$driver)) throw new NoConnectionException('query');
+		if(!is_object(static::$driver)) throw new NoConnectionException('query');
 		
-		return self::$driver->getNumAffectedRows();
+		return static::$driver->getNumAffectedRows();
 		
 	}
 	
@@ -253,9 +280,9 @@ class Database {
 	 */
 	public static function escape($string) {
 		
-		if(!is_object(self::$driver)) throw new NoConnectionException('query');
+		if(!is_object(static::$driver)) throw new NoConnectionException('query');
 		
-		return self::$driver->escape($string);
+		return static::$driver->escape($string);
 		
 	}
 	
@@ -268,7 +295,7 @@ class Database {
 	 */
 	public static function getQueries() {
 		
-		return self::$queries;
+		return static::$queries;
 		
 	}
 	
