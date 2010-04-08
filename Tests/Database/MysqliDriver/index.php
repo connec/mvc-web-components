@@ -6,6 +6,8 @@ error_reporting(E_ALL | E_STRICT);
 
 require_once '../../../autoloader.php';
 require_once '../../../mvc_exception.php';
+require_once '../../../extensible_static.php';
+require_once '../../../hookable.php';
 require_once '../../../Database/database.php'; // Include Database first to load database interfaces and exceptions.
 
 Autoloader::addDirectory(

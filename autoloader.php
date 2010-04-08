@@ -89,7 +89,6 @@ class Autoloader {
 /**
  * Register Autoloader::autoload() with PHP.
  */
-Autoloader::addDirectory('.');
 spl_autoload_register(array('\\MVCWebComponents\\Autoloader', 'autoload'));
 
 /**

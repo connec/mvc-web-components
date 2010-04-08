@@ -16,7 +16,7 @@ class AutoloadTest extends UnitTest {
 		
 		$this->assertStrict(spl_autoload_functions(), array(array('MVCWebComponents\Autoloader', 'autoload')));
 		
-		$this->assertStrict(Autoloader::$directories, array(realpath('.') . DIRECTORY_SEPARATOR));
+		$this->assertStrict(Autoloader::$directories, array());
 		
 		try {
 			Autoloader::addDirectory('missing');
