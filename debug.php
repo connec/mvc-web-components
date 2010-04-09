@@ -11,7 +11,7 @@ namespace MVCWebComponents;
 /**
  * Provides useful debugging functions.
  * 
- * @version 1.2
+ * @version 1.3
  */
 class Debug {
 	
@@ -159,17 +159,43 @@ class Debug {
 	 */
 	public static function backtrace($return = false) {
 		
-		$output = '';
-		$backtrace = debug_backtrace(false);
-		$i = count($backtrace);
-		foreach($backtrace as $trace) {
-			@$output .= '<span class="' . ($i % 2 == 0 ? 'even' : 'odd') . '">' . "$i: {$trace['class']}{$trace['type']}{$trace['function']}() <i>{$trace['file']} line {$trace['line']}</i></span>\n";
-			$i -= 1;
-		}
-		
+		$output = static::formatTrace(debug_backtrace(false));
 		if($return) return $output;
 		else echo $output;
 		
+	}
+	
+	/**
+	 * Formats a backtrace into a neat HTML string.
+	 * 
+	 * @param array $trace
+	 * @return string
+	 * @since 1.3
+	 */
+	public static function formatTrace($trace) {
+		
+		$default_trace = array(
+			'function' => 'Unknown',
+			'line' => 'Unknown',
+			'file' => 'Unknown',
+			'class' => '',
+			'object' => null,
+			'type' => '',
+			'args' => array()
+		);
+		
+		$output = '<pre class="trace">';
+		$i = count($trace);
+		
+		foreach($trace as $line) {
+			$line = array_merge($default_trace, $line);
+			$output .= '<div class="' . ($i % 2 == 0 ? 'even' : 'odd') . '">' . "$i: {$line['class']}{$line['type']}{$line['function']}()<br/>";
+			$output .= "<span class=\"small\">[{$line['file']}:{$line['line']}]</span></div>";
+			$i --;
+		}
+		$output .= '</pre>';
+		
+		return $output;
 	}
 	
 	/**
