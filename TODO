@@ -1,0 +1,9 @@
+View
+	Template parsing... (tricky). (seperate project)
+
+Testing
+	More aesthetically appealing, maybe use Ruby's 'should' system, e.g.
+	public function should_ensure_some_stuff_happens() {}
+
+Behaviours
+	Similar to ruby's mixin system.  Consider how to implement.
