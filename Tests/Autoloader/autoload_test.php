@@ -18,6 +18,7 @@ class AutoloadTest extends UnitTest {
 		
 		$this->assertStrict(Autoloader::$directories, array());
 		
+		$a = false;
 		try {
 			Autoloader::addDirectory('missing');
 		}catch(MissingDirectoryException $e) {
@@ -25,16 +26,28 @@ class AutoloadTest extends UnitTest {
 		}
 		$this->assertTrue($a);
 		
+		$a = false;
+		try {
+			Autoloader::addDirectory('missing', false);
+		}catch(MissingDirectoryException $e) {
+			$b = true;
+		}
+		$this->assertFalse($a);
+		
 		Autoloader::addDirectory('../..');
 		
 		$this->assertFalse(\MVCWebComponents\Register::check('missing'));
 		
+		$a = false;
 		try {
-			new NoClass();
+			class_exists('NoClass');
 		}catch(MissingClassException $e) {
-			$b = true;
+			$a = true;
 		}
-		$this->assertTrue($b);
+		$this->assertTrue($a);
+		
+		Autoloader::relax();
+		class_exists('NoClass'); // despite missing try/catch, should not throw exception
 		
 	}
 	
