@@ -322,13 +322,13 @@ abstract class Model extends Hookable {
 		static::__init();
 		$this->fields = static::p()->table->getDefaultRecord();
 		
-		$this->runHook('beforeConstruct', array(&$this));
+		$this->runHook('beforeConstruct', $this);
 		
 		foreach(static::getFields() as $field)
 			if(isset($fields[$field])) $this->fields[$field] = $fields[$field];
 		if($fromFind) $this->touched = false;
 		
-		$this->runHook('afterConstruct', array(&$this));
+		$this->runHook('afterConstruct', $this);
 		
 	}
 	
@@ -660,7 +660,7 @@ abstract class Model extends Hookable {
 		if(!isset($options['validate'])) $options['validate'] = true;
 		$return = array();
 		
-		$this->runHook('beforeSave', array(&$this));
+		$this->runHook('beforeSave', $this);
 		
 		if($options['cascade']) {
 			foreach(static::p()->belongsTo as $alias => $relation) {
@@ -698,7 +698,7 @@ abstract class Model extends Hookable {
 			}
 		}
 		
-		$this->runHook('afterSave', array(&$this));
+		$this->runHook('afterSave', $this);
 		
 		return array_reduce($return, function($a,$b){return $a and $b;}, true);
 		

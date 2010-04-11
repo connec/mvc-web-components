@@ -127,7 +127,7 @@ class Database extends Hookable {
 		
 		if(!is_object(static::$driver)) throw new NoConnectionException('query');
 		
-		static::runHook('beforeQuery', array(&$sql));
+		static::runHook('beforeQuery', null, array(&$sql));
 		
 		static::$queries[] = array();
 		$query =& static::$queries[count(static::$queries) - 1];
@@ -148,7 +148,7 @@ class Database extends Hookable {
 		$query['num_affected_rows'] = static::getNumAffectedRows();
 		$query['time'] = microtime(true) - $start;
 		
-		static::runHook('afterQuery', array(&$query));
+		static::runHook('afterQuery', null, array(&$query));
 		
 		return true;
 		

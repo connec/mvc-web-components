@@ -26,7 +26,15 @@ abstract class Hookable extends ExtensibleStatic {
 	 */
 	public static function addHook($name, $callback) {
 		
-		if(!is_callable($callback)) throw new BadCallbackException($callback);
+		Autoloader::relax(); // Don't want exceptions from missing classes.
+		if(!is_callable($callback)) {
+			if($callback[0] == '$this') {
+				$class = get_called_class();
+				Autoloader::relax(); // And again.
+				if(!is_callable(array($class, $callback[1])))
+					throw new BadCallbackException(array($class, $callback[1]));
+			}else throw new BadCallbackException($callback);
+		}
 		
 		static::hookInit();
 		
@@ -40,17 +48,20 @@ abstract class Hookable extends ExtensibleStatic {
 	 * Executes all the callbacks of a particular hook.
 	 * 
 	 * @param string $name
-	 * @param bool $required If true and there are no callbacks under $name, throws an exception.
+	 * @param object $_this If this is passed the callback using '$this' as the object name will use the provided object instead.
+	 * @param array  $args
+	 * @param bool   $required If true and there are no callbacks under $name, throws an exception.
 	 * @return array An array of the return values of the callbacks.
 	 * @since 1.0
 	 */
-	protected static function runHook($name, $args = array(), $required = false) {
+	protected static function runHook($name, $_this = null, $args = array(), $required = false) {
 		
 		static::hookInit();
 		
 		$return = array();
 		if(isset(static::p()->hooks[$name]) and !empty(static::p()->hooks[$name])) {
 			foreach(static::p()->hooks[$name] as $callback) {
+				if($callback[0] == '$this' and is_object($_this)) $callback[0] =& $_this;
 				$return[] = call_user_func_array($callback, $args);
 			}
 		}elseif($required) throw new MissingHookException($name);
