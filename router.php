@@ -12,6 +12,25 @@ use MVCWebComponents\MVCException;
 /**
  * Gets an array of parameters from an input URL using defined patterns.
  * 
+ * Principle: 'connect' a url pattern to an array of parameters.  Url pattern 
+ * can contain variables and wildcards which can be passed to the parameters.
+ *
+ * E.g.
+ * <code>
+ *    Router::connect('/:controller/:action/*',
+ *       array('controller' => ':controller', 'action' => ':action'));
+ *    $params = Router::route('/pages/view/home');
+ * </code>
+ * This will give $params the value:
+ * <code>
+ * array(
+ *    'controller' => 'pages',
+ *    'action'     => 'view',
+ *    'other'      => array('home')
+ * );
+ * </code>
+ *
+ * 
  * @version 1.3
  */
 class Router {
