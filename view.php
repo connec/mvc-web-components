@@ -12,7 +12,7 @@ namespace MVCWebComponents;
 /**
  * Generates HTML code based on a template and given variables.
  * 
- * @version 0.4.4
+ * @version 0.4.5
  */
 class View extends Hookable {
 	
@@ -122,7 +122,7 @@ class View extends Hookable {
 	public static function partial($template, $vars = array()) {
 		
 		$partial = new View($template);
-		foreach($vars as $var => $value) $partial->register($var, $value);
+		foreach($vars as $var => $value) $partial->set($var, $value);
 		return $partial->render(true);
 		
 	}
@@ -139,7 +139,7 @@ class View extends Hookable {
 		// Replace forward-slashes by the system's directory separator.
 		$template = str_replace('/', DIRECTORY_SEPARATOR, $template);
 		
-		static::runHook('beforeConstruct', array(&$template));
+		static::runHook('beforeConstruct', null, array(&$template));
 		
 		// Find a suitable pre/post path combination.
 		$tried = array();
@@ -147,7 +147,7 @@ class View extends Hookable {
 			foreach(static::$postPaths as $postPath) {
 				$this->template = "$prePath$template$postPath";
 				if($this->checkTemplate(false)) {
-					static::runHook('afterConstruct', array(&$this));
+					static::runHook('afterConstruct', $this);
 					return;
 				}
 				$tried[] = $this->template;
@@ -168,7 +168,38 @@ class View extends Hookable {
 	 */
 	public function __set($key, $value) {
 		
-		$this->register[$key] = $value;
+		$this->set($key, $value);
+		
+	}
+	
+	/**
+	 * Register a variable to pass to the template.
+	 * 
+	 * @param string $key   The name to use to represent the variable.
+	 * @param mixed  $value The value to store.
+	 * @return void
+	 * @since 0.4
+	 */
+	public function set($key, $value = null) {
+		
+		if(is_array($key)) {
+			foreach($key as $var => $val) {
+				$this->register($var, $val);
+			}
+		}else $this->register[$key] = $value;
+		
+	}
+	
+	/**
+	 * Get the value of a registered variable.
+	 * 
+	 * @param string $key
+	 * @return mixed
+	 * @since 0.4.5
+	 */
+	public function get($key) {
+		
+		return $this->register[$key];
 		
 	}
 	
@@ -195,20 +226,6 @@ class View extends Hookable {
 	}
 	
 	/**
-	 * Register a variable to pass to the template.
-	 * 
-	 * @param string $key   The name to use to represent the variable.
-	 * @param mixed  $value The value to store.
-	 * @return void
-	 * @since 0.4
-	 */
-	public function register($key, $value) {
-		
-		$this->register[$key] = $value;
-		
-	}
-	
-	/**
 	 * Render the given template.
 	 * 
 	 * @param bool $return When true the result is returned instead of echo'd.
@@ -219,7 +236,7 @@ class View extends Hookable {
 		
 		$this->return = (bool)$return; // Store $return in an instance variable for improved sandboxing.
 		
-		static::runHook('beforeRender', array(&$this));
+		static::runHook('beforeRender', $this);
 		
 		// Extract the registers into the local scope.
 		extract(static::$globalRegister);
@@ -234,7 +251,7 @@ class View extends Hookable {
 		// Store the result.
 		$this->result = ob_get_clean();
 		
-		static::runHook('afterRender', array(&$this));
+		static::runHook('afterRender', $this);
 		
 		// Return or display it.
 		if($this->return) return $this->result;
@@ -269,16 +286,18 @@ class View extends Hookable {
 	 */
 	public function importHelper($helper, $constructOptions = array()) {
 		
+		Autoloader::relax();
 		if(!class_exists($helper)) {
 			throw new MissingHelperException($helper);
 			return false;
 		}
 		
-		$class = new $helper($constructOptions);
-		$this->helpers[] =& $class;
-		
 		$denamespaced = @end(explode('\\', $helper));
-		$this->{$denamespaced} =& $class;
+		$name = str_replace('_helper', '', Inflector::underscore($denamespaced));
+		if(isset($this->helpers[$name])) return true;
+		
+		$this->helpers[$name] = new $helper($constructOptions);
+		$this->set($name, $this->helpers[$name]);
 		
 		return true;
 		

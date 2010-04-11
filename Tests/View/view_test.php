@@ -5,7 +5,11 @@ use MVCWebComponents\UnitTest\UnitTest,
 	MVCWebComponents\View,
 	MVCWebComponents\MissingTemplateException;
 
-class Helper {
+class Test1Helper {
+	public function changecase($a) {return strtoupper($a);}
+}
+
+class Test2Helper {
 	
 	private $function = 'strtoupper';
 	
@@ -57,11 +61,11 @@ STRING;
 	public function TestImportHelper() {
 		
 		$view = new View('.');
-		$view->importHelper('ViewTest\\Helper');
-		$this->assertStrict($view->Helper->changecase('test'), 'TEST');
+		$view->importHelper('ViewTest\\Test1Helper');
+		$this->assertStrict($view->get('test1')->changecase('test'), 'TEST');
 		
-		$view->importHelper('ViewTest\\Helper', array('function' => 'strtolower'));
-		$this->assertStrict($view->Helper->changecase('TEST'), 'test');
+		$view->importHelper('ViewTest\\Test2Helper', array('function' => 'strtolower'));
+		$this->assertStrict($view->get('test2')->changecase('TEST'), 'test');
 		
 	}
 	
