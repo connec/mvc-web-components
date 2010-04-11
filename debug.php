@@ -159,7 +159,9 @@ class Debug {
 	 */
 	public static function backtrace($return = false) {
 		
-		$output = static::formatTrace(debug_backtrace(false));
+		$trace = debug_backtrace(false);
+		array_shift($trace);
+		$output = static::formatTrace($trace);
 		if($return) return $output;
 		else echo $output;
 		
@@ -199,27 +201,37 @@ class Debug {
 	}
 	
 	/**
-	 * Prints a given value.
+	 * Extends PHP's var_dump with an optional return parameter.
 	 * 
-	 * Prints a value using var_dump and appends a backtrace.
-	 * 
-	 * @param mixed $value The value to dump.
-	 * @return void
-	 * @since 1.0
+	 * @param mixed $var
+	 * @param bool  $return
+	 * @param bool  $trace  When true, appends a backtrace to the output.
+	 * @return mixed
 	 */
-	public static function dump($value) {
-		
-		$output  = '<h2>Debug Output</h2>';
-		$output .= '<pre class="debug-dump">';
+	public static function var_dump($var, $return = false, $trace = true) {
 		
 		ob_start();
-		var_dump($value);
+		var_dump($var);
 		
+		$output = '<pre class="debug-dump">';
 		$output .= ob_get_clean();
-		$output .= Debug::backtrace(true);
+		if($trace) $output .= Debug::backtrace(true);
 		$output .= '</pre>';
 		
+		if($return) return $output;
 		echo $output;
+		
+	}
+	
+	/**
+	 * Returns a summary of watched variables.
+	 * 
+	 * @return array
+	 * @since 1.4
+	 */
+	public static function summary() {
+		
+		return static::$watched;
 		
 	}
 	
