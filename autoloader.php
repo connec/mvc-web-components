@@ -23,7 +23,7 @@ require_once dirname(__FILE__) . DIRECTORY_SEPARATOR . 'mvc_exception.php';
  * 
  * Also effectively overloads PHP errors with exceptions for missing classes.
  * 
- * @version 1.0
+ * @version 1.1
  */
 class Autoloader {
 	
@@ -38,21 +38,47 @@ class Autoloader {
 	public static $directories = array();
 	
 	/**
+	 * Sets if Autoloader is 'relaxed'.
+	 * 
+	 * When relaxed, autoload will not throw an exception.  Resets after each autoload.
+	 * 
+	 * @var bool
+	 * @since 1.1
+	 */
+	protected static $relaxed = false;
+	
+	/**
+	 * Sets the relaxed flag to true.
+	 * 
+	 * @return void
+	 * @since 1.1
+	 */
+	public static function relax() {
+		
+		static::$relaxed = true;
+		
+	}
+	
+	/**
 	 * Adds the given directory(s) to the search list.
 	 * 
 	 * @param string $dir A directory to add.
 	 * @param string $... Additional directories.
+	 * @param bool $checkDir If true, an exception is raised if the dir is not readable.
 	 * @return void
 	 * @since 1.0
 	 */
-	public static function addDirectory($dir) {
+	public static function addDirectory($dir /* $..., */, $checkDir = true) {
 		
 		$dirs = func_get_args();
+		if(is_bool(end($dirs))) $checkDir = array_pop($dirs);
 		foreach($dirs as $key => &$dir) {
-			if(!is_dir($dir)) throw new MissingDirectoryException($dir);
+			if(!is_dir($dir) or !is_readable($dir)) {
+				if($checkDir) throw new MissingDirectoryException($dir);
+				unset($dirs[$key]);
+				continue;
+			}
 			$dir = realpath($dir) . DIRECTORY_SEPARATOR;
-			if(!is_dir($dir)) unset($dirs[$key]);
-			if(!is_readable($dir)) unset($dirs[$key]);
 		}
 		self::$directories = array_merge(self::$directories, $dirs);
 		
@@ -75,11 +101,18 @@ class Autoloader {
 			$search = "$dir$file";
 			if(file_exists($search)) {
 				require_once $search;
-				if(class_exists($fullName, false)) return;
+				if(class_exists($fullName, false)) {
+					static::$relaxed = false;
+					return;
+				}
 			}
 		}
 		
-		// If we reach here we haven't found the class, throw an exception.
+		// If we reach here we haven't found the class, return false.
+		if(static::$relaxed) {
+			static::$relaxed = false;
+			return false;
+		}
 		throw new MissingClassException($fullName);
 		
 	}
@@ -127,7 +160,7 @@ class MissingDirectoryException extends MVCException {
 	 */
 	public function __construct($dir) {
 		
-		$this->message = "No such directory `$dir`; Given to Autoloader::addDirectory().";
+		$this->message = "No such directory `$dir`; Given to Autoloader::addDirectory().  Ensure it exists and is readable.";
 		
 	}
 	
