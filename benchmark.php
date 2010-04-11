@@ -120,7 +120,6 @@ class Benchmark extends Set {
 		foreach(static::p()->register as $k => $v) {
 			if(substr($k, -6) == '_total') $return[substr($k, 0, -6)] = static::read($k);
 		}
-		ksort($return);
 		return $return;
 		
 	}
