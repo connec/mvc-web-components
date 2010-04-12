@@ -12,7 +12,7 @@ namespace MVCWebComponents;
 /**
  * Generates HTML code based on a template and given variables.
  * 
- * @version 0.4.5
+ * @version 0.4.6
  */
 class View extends Hookable {
 	
@@ -33,6 +33,14 @@ class View extends Hookable {
 	protected static $postPaths = array();
 	
 	/**
+	 * An array of namespaces to look for helpers in.
+	 * 
+	 * @var array
+	 * @since 0.4.6
+	 */
+	protected static $helperNamespaces = array();
+	
+	/**
 	 * An associative array of variable => 'value' pairs to pass to the template.
 	 * 
 	 * @var array
@@ -47,6 +55,14 @@ class View extends Hookable {
 	 * @since 0.4.2
 	 */
 	protected static $globalRegister = array();
+	
+	/**
+	 * An array of helpers for this view.
+	 * 
+	 * @var array
+	 * @since 0.4.6
+	 */
+	protected $helpers = array();
 	
 	/**
 	 * The path to this Views template.
@@ -99,6 +115,19 @@ class View extends Hookable {
 	}
 	
 	/**
+	 * Adds an arbitrary number of namespaces to the helper namespaces array.
+	 * 
+	 * @param string $namespace
+	 * @return void
+	 * @since 0.4.6
+	 */
+	public static function addHelperNamespace($namespace) {
+		
+		static::$helperNamespaces = array_merge(func_get_args(), static::$helperNamespaces);
+		
+	}
+	
+	/**
 	 * Set a global value.
 	 * 
 	 * @param  string $key   The name to use for the data.
@@ -143,8 +172,8 @@ class View extends Hookable {
 		
 		// Find a suitable pre/post path combination.
 		$tried = array();
-		foreach(static::$prePaths as $prePath) {
-			foreach(static::$postPaths as $postPath) {
+		foreach(array_merge(array(''), static::$prePaths) as $prePath) {
+			foreach(array_merge(array(''), static::$postPaths) as $postPath) {
 				$this->template = "$prePath$template$postPath";
 				if($this->checkTemplate(false)) {
 					static::runHook('afterConstruct', $this);
@@ -183,9 +212,8 @@ class View extends Hookable {
 	public function set($key, $value = null) {
 		
 		if(is_array($key)) {
-			foreach($key as $var => $val) {
-				$this->register($var, $val);
-			}
+			foreach($key as $var => $val)
+				$this->register[$var] = $val;
 		}else $this->register[$key] = $value;
 		
 	}
@@ -242,6 +270,13 @@ class View extends Hookable {
 		extract(static::$globalRegister);
 		extract($this->register);
 		
+		// Function for dynamically loading a helper.
+		$_this =& $this;
+		$helper = function($name) use ($_this) {
+			return $_this->helper($name);
+		};
+		$h =& $helper;
+		
 		// Begin output buffering.
 		ob_start();
 		
@@ -269,7 +304,7 @@ class View extends Hookable {
 	 */
 	public function checkTemplate($error = true) {
 		
-		if(is_readable($this->template)) return true;
+		if(is_readable($this->template) and is_file($this->template)) return true;
 		if($error) throw new MissingTemplateException($this->template);
 		return false;
 		
@@ -284,22 +319,45 @@ class View extends Hookable {
 	 * @return bool True if the given helper could be found and loaded, false otherwise.
 	 * @since 0.4.1
 	 */
-	public function importHelper($helper, $constructOptions = array()) {
+	public function importHelper($helper) {
 		
+		// Save time and return if we're checking for an existing helper.
+		if(isset($this->helpers[$helper])) return true;
+		
+		// Find the class name using assumed conventions.
+		$class = Inflector::camelize("{$helper}_helper");
 		Autoloader::relax();
-		if(!class_exists($helper)) {
-			throw new MissingHelperException($helper);
-			return false;
+		if(!class_exists($class)) {
+			// Check the namespaces.
+			foreach(static::$helperNamespaces as $namespace) {
+				Autoloader::relax();
+				if(!class_exists($namespace . $class)) continue;
+				$class = $namespace . $class;
+				break;
+			}
+			Autoloader::relax();
+			if(!class_exists($class)) throw new MissingHelperException($class);
 		}
 		
-		$denamespaced = @end(explode('\\', $helper));
-		$name = str_replace('_helper', '', Inflector::underscore($denamespaced));
-		if(isset($this->helpers[$name])) return true;
-		
-		$this->helpers[$name] = new $helper($constructOptions);
-		$this->set($name, $this->helpers[$name]);
+		// Store it for easy retrieval.
+		$this->helpers[$helper] = new $class;
+		$this->set($helper, $this->helpers[$helper]);
 		
 		return true;
+		
+	}
+	
+	/**
+	 * Returns a reference to the named helper.
+	 * 
+	 * @param string $helper
+	 * @return object A helper.
+	 * @since 0.4.6
+	 */
+	public function &helper($helper) {
+		
+		if(!isset($this->helpers[$helper])) $this->importHelper($helper);
+		return $this->helpers[$helper];
 		
 	}
 	
