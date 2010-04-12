@@ -13,9 +13,33 @@ use MVCWebComponents\Set,
 /**
  * Class providing useful benchmarking functionality.
  * 
- * @version 1.0
+ * @version 2.0
  */
-class Benchmark extends Set {
+class Benchmark {
+	
+	/**
+	 * An array of benchmark start times.
+	 * 
+	 * @var array
+	 * @since 2.0
+	 */
+	protected static $started = array();
+	
+	/**
+	 * An array of benchmark finish times.
+	 * 
+	 * @var array
+	 * @since 2.0
+	 */
+	protected static $finished = array();
+	
+	/**
+	 * An array of benchmark times.
+	 * 
+	 * @var array
+	 * @since 2.0
+	 */
+	protected static $benchmarks = array();
 	
 	/**
 	 * Returns whether or not the given benchmark has been started.
@@ -26,20 +50,20 @@ class Benchmark extends Set {
 	 */
 	public static function started($key) {
 		
-		return static::check($key . '_start');
+		return isset(static::$started[$key]);
 		
 	}
 	
 	/**
-	 * Returns whether or not the given banchmark has ended.
+	 * Returns whether or not the given benchmark has ended.
 	 * 
 	 * @param string $key
 	 * @return bool
 	 * @since 1.0
 	 */
-	public static function ended($key) {
+	public static function finished($key) {
 		
-		return static::check($key . '_end') and static::check($key . '_total');
+		return isset(static::$benchmarks[$key]);
 		
 	}
 	
@@ -47,16 +71,18 @@ class Benchmark extends Set {
 	 * Starts a benchmark.
 	 * 
 	 * @param string $key
-	 * @param bool $force When true the benchmark is started regardless of whether or not it has already been started.
+	 * @param float  $time  The time to set as the benchmark's start.  microtime used if not set.
+	 * @param bool   $force When true the benchmark is started regardless of whether or not it has already been started.
 	 * @return void
 	 * @since 1.0
 	 * @throws MVCException Thrown when the benchmark has already started (and $forced is false).
 	 */
-	public static function start($key, $force = false) {
+	public static function start($key, $time = 0, $force = false) {
 		
 		if(!$force and static::started($key))
 			throw new MVCException("Cannot start running benchmark `$key`.");
-		static::write($key . '_start', microtime(true));
+		if(!$time) $time = microtime(true);
+		static::$started[$key] = $time;
 		
 	}
 	
@@ -71,16 +97,13 @@ class Benchmark extends Set {
 		
 		if(!static::started($key))
 			throw new MVCException("Cannot end unstarted benchmark `$key`.");
-		static::write($key . '_end', microtime(true));
-		static::write($key . '_total', static::read($key . '_end') - static::read($key . '_start'));
-		return static::read($key . '_total');
+		static::$finished[$key] = microtime(true);
+		return static::$benchmarks[$key] = static::$finished[$key] - static::$started[$key];
 		
 	}
 	
 	/**
-	 * Return the value of the given key.
-	 * 
-	 * Adds '_total' to the given key for convenience (when applicable).
+	 * Return the result of the given benchmark.
 	 * 
 	 * @param string $key
 	 * @return mixed The value stored in $key (or {$key}_total).
@@ -88,8 +111,8 @@ class Benchmark extends Set {
 	 */
 	public static function read($key) {
 		
-		if(static::check($key . '_total')) return static::read($key . '_total');
-		else return parent::read($key);
+		if(static::finished($key)) return static::$benchmarks[$key];
+		else throw new MVCException("Cannot read unfinished benchmark `$key`.");
 		
 	}
 	
@@ -102,9 +125,36 @@ class Benchmark extends Set {
 	 */
 	public static function reset($key) {
 		
-		static::clear($key . '_start');
-		static::clear($key . '_end');
-		static::clear($key . '_total');
+		if(static::started($key)) unset(static::$started[$key]);
+		if(static::finished($key)) {
+			unset(static::$finished[$key]);
+			unset(static::$benchmarks[$key]);
+		}
+		
+	}
+	
+	/**
+	 * Combines the given benchmarks.
+	 * 
+	 * @param string $name       The name to give the resulting benchmark.
+	 * @param mixed  $benchmarks Either an array of benchmark keys to combine 
+	 *               OR a string, in which case keys beginning with $benchmark will be combined.
+	 * @return float
+	 * @since 2.0
+	 */
+	public static function combine($name, $benchmarks) {
+		
+		$total = 0;
+		if(is_array($benchmarks)) {
+			foreach($benchmarks as $key) {
+				if(static::finished($key)) $total += static::$benchmarks[$key];
+				else throw new MVCException("Cannot combine unfinished benchmark `$key`.");
+			}
+		} else {
+			foreach(static::$benchmarks as $key => $time)
+				if(strpos($key, $benchmarks) === 0) $total += $time;
+		}
+		return static::$benchmarks[$name] = $total;
 		
 	}
 	
@@ -116,11 +166,7 @@ class Benchmark extends Set {
 	 */
 	public static function summary() {
 		
-		$return = array();
-		foreach(static::p()->register as $k => $v) {
-			if(substr($k, -6) == '_total') $return[substr($k, 0, -6)] = static::read($k);
-		}
-		return $return;
+		return static::$benchmarks;
 		
 	}
 	
