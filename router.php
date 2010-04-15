@@ -131,6 +131,13 @@ class Router {
 		
 		static::$connection = null;
 		
+		// Get the query string off if it's there
+		if(($start = strpos($url, '?')) !== false) {
+			$queryStr = substr($url, $start + 1);
+			$url = substr($url, 0, $start);
+		}else
+			$queryStr = isset($_SERVER['QUERY_STRING']) ? $_SERVER['QUERY_STRING'] : '';
+		
 		// Append the trailing '/' if it's missing.
 		if(substr($url, -1) != '/') $url .= '/';
 		
@@ -159,7 +166,7 @@ class Router {
 					$parameter = str_replace(":$variable", $matches[$variable], $parameter);
 				}
 				
-				// Process 'other' parameters if they exist.
+				// Process wildcard parameters if they exist.
 				if(isset($matches['other'])) {
 					foreach(explode('/', $matches['other']) as $other) {
 						if(strpos($other, ':') === false) $connection['parameters']['other'][] = $other;
@@ -169,6 +176,11 @@ class Router {
 						}
 					}
 				}
+				
+				// Append anything from the query string.
+				$array = array();
+				parse_str($queryStr, $array);
+				$connection['parameters']['other'] = array_merge($connection['parameters']['other'], $array);
 				
 				// Return the parameters.
 				return $connection['parameters'];

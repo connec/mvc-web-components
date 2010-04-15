@@ -98,6 +98,22 @@ class RouterTest extends UnitTest {
 		
 	}
 	
+	public function TestQueryString() {
+		
+		Router::connect('/:a/:b');
+		$params = Router::route('/1/2?c=3&d=4');
+		$this->assertStrict($params['a'], '1');
+		$this->assertStrict($params['b'], '2');
+		$this->assertStrict($params['other'], array('c' => '3', 'd' => '4'));
+		
+		Router::connect('/:a/:b/*', array(5));
+		$params = Router::route('/1/2/3/4?c=3&d=4');
+		$this->assertStrict($params['a'], '1');
+		$this->assertStrict($params['b'], '2');
+		$this->assertStrict($params['other'], array(5, '3', '4', 'c' => '3', 'd' => '4'));
+		
+	}
+	
 }
 
 ?>
