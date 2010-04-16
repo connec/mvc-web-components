@@ -6,27 +6,11 @@ use MVCWebComponents\UnitTest\UnitTest,
 	MVCWebComponents\MissingTemplateException;
 
 class Test1Helper {
-	public function changecase($a) {return strtoupper($a);}
+	public function changecase($a) { return strtoupper($a); }
 }
 
 class Test2Helper {
-	
-	private $function = 'strtoupper';
-	
-	public function __construct($options = array()) {
-		
-		if(isset($options['function']) and $options['function'] == 'strtolower')
-			$this->function = 'strtolower';
-		
-	}
-	
-	public function changecase($a) {
-		
-		$func = $this->function;
-		return $func($a);
-		
-	}
-	
+	public function changecase($a) { return strtolower($a); }
 }
 
 class ViewTest extends UnitTest {
@@ -60,11 +44,13 @@ STRING;
 	
 	public function TestImportHelper() {
 		
+		View::addHelperNamespace('\\ViewTest\\');
+		
 		$view = new View('.');
-		$view->importHelper('ViewTest\\Test1Helper');
+		$view->importHelper('test1');
 		$this->assertStrict($view->get('test1')->changecase('test'), 'TEST');
 		
-		$view->importHelper('ViewTest\\Test2Helper', array('function' => 'strtolower'));
+		$view->importHelper('test2');
 		$this->assertStrict($view->get('test2')->changecase('TEST'), 'test');
 		
 	}
