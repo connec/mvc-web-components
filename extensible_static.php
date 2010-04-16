@@ -11,7 +11,7 @@ namespace MVCWebComponents;
 /**
  * ExtensibleStatic class simulates inheritance for static properties.
  * 
- * @version 1.0
+ * @version 1.1
  */
 abstract class ExtensibleStatic {
 	
@@ -45,6 +45,18 @@ abstract class ExtensibleStatic {
 	protected static function &p() {
 		
 		return static::properties();
+		
+	}
+	
+	/**
+	 * Returns a copy of the static class' state for inspection.
+	 * 
+	 * @return object
+	 * @since 1.1
+	 */
+	public static function dump() {
+		
+		return clone static::properties();
 		
 	}
 	
