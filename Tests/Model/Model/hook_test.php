@@ -7,8 +7,6 @@ class Post extends Model {
 	
 	protected static $afterConstruct = array(array('$this', 'setStringTime'));
 	
-	public $stringTime = '';
-	
 	public function __construct($fields = array(), $fromFind = false) {
 		
 		$this->addHook('beforeSave', array($this, 'setTime'));

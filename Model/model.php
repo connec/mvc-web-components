@@ -209,7 +209,6 @@ abstract class Model extends Hookable {
 	 */
 	public static function getName() {
 		
-		static::__init();
 		return get_called_class();
 		
 	}
@@ -223,7 +222,6 @@ abstract class Model extends Hookable {
 	 */
 	public static function getTableName() {
 		
-		static::__init();
 		return static::properties()->table->getName();
 		
 	}
@@ -237,7 +235,6 @@ abstract class Model extends Hookable {
 	 */
 	public static function getPrimaryKey() {
 		
-		static::__init();
 		return static::properties()->table->getPrimaryKey();
 		
 	}
@@ -251,7 +248,6 @@ abstract class Model extends Hookable {
 	 */
 	public static function getFields() {
 		
-		static::__init();
 		return static::properties()->table->getFields();
 		
 	}
@@ -265,7 +261,6 @@ abstract class Model extends Hookable {
 	 */
 	public static function getRowCount() {
 		
-		static::__init();
 		return static::properties()->table->getRowCount();
 		
 	}
@@ -285,27 +280,10 @@ abstract class Model extends Hookable {
 				foreach($related as $record) {
 					$return[$field][] = $record->getArray();
 				}
-			}else $return[$field] = $related->getArray();
+			}elseif($related) $return[$field] = $related->getArray();
+			else $return[$field] = $related;
 		}
 		return $return;
-		
-	}
-	
-	/**
-	 * Returns an StdClass with all the current static values (very useful for debugging)
-	 * 
-	 * @param bool $return When true, returns the object instead of dumping it.
-	 * @return StdClass An object containing the current values of useful static properties.
-	 * @since 0.8
-	 */
-	public static function dump($dump = true) {
-		
-		static::__init();
-		
-		$return = static::properties();
-		
-		if(!$dump) return $return;
-		var_dump($return);
 		
 	}
 	
@@ -319,13 +297,17 @@ abstract class Model extends Hookable {
 	 */
 	public function __construct($fields = array(), $fromFind = false) {
 		
-		static::__init();
 		$this->fields = static::p()->table->getDefaultRecord();
 		
 		$this->runHook('beforeConstruct', $this);
 		
 		foreach(static::getFields() as $field)
 			if(isset($fields[$field])) $this->fields[$field] = $fields[$field];
+		foreach(array_merge(array_keys(static::p()->hasOne), array_keys(static::p()->belongsTo)) as $field)
+			$this->related[$field] = null;
+		foreach(array_keys(static::p()->hasMany) as $field)
+			$this->related[Inflector::pluralize($field)] = array();
+		
 		if($fromFind) $this->touched = false;
 		
 		$this->runHook('afterConstruct', $this);
@@ -338,25 +320,20 @@ abstract class Model extends Hookable {
 	 * @param string $field The name of the field to return.
 	 * @return mixed The value of $field.
 	 * @since 0.9
-	 * @throws InvalidFieldException Thrown when attempting to access or modify a non-existant field or relation.
 	 */
 	public function &__get($field) {
-		
-		// Avoids errors about variable references.
-		$null = null;
 		
 		// Return the actual primary key value if the request is for primary_key.
 		if($field == 'primary_key') return $this->fields[static::getPrimaryKey()];
 		
 		// Check if it's a field first.
-		if(isset($this->fields[$field])) return $this->fields[$field];
-		if(in_array($field, static::getFields())) return $null;
+		if(array_key_exists($field, $this->fields)) return $this->fields[$field];
 		
 		// Check relations...
-		if(isset(static::p()->hasOne[$field]) or isset(static::p()->hasMany[Inflector::singularize($field)]) or isset(static::p()->belongsTo[$field])) {
-			if(isset($this->related[$field])) return $this->related[$field];
-			else return $null;
-		}else throw new InvalidFieldException($field, static::p()->name);
+		if(array_key_exists($field, $this->related)) return $this->related[$field];
+		
+		// If all else fails, let PHP throw an error.
+		return $this->$field;
 		
 	}
 	
@@ -367,7 +344,6 @@ abstract class Model extends Hookable {
 	 * @param mixed $value The value to assign.
 	 * @return void
 	 * @since 0.9
-	 * @throws InvalidFieldException Thrown when attempting to access or modify a non-existant field or relation.
 	 */
 	public function __set($field, $value) {
 		
@@ -377,13 +353,15 @@ abstract class Model extends Hookable {
 		if($field == 'primary_key') $this->fields[static::getPrimaryKey()] = $value;
 		
 		// Check fields first...
-		elseif(in_array($field, static::getFields())) $this->fields[$field] = $value;
+		elseif(array_key_exists($field, $this->fields)) $this->fields[$field] = $value;
 		
 		// Check the related models...
-		elseif(isset(static::p()->hasOne[$field]) or isset(static::p()->hasMany[Inflector::singularize($field)]) or isset(static::p()->belongsTo[$field])) $this->related[$field] = $value;
+		elseif(array_key_exists($field, $this->related)) $this->related[$field] = $value;
+		
+		// Undo 'touching' and set it normally.
 		else {
 			$this->touched = false;
-			throw new InvalidFieldException($field, static::p()->name);
+			$this->$field = $value;
 		}
 		
 	}
@@ -398,7 +376,7 @@ abstract class Model extends Hookable {
 	public function __isset($field) {
 		
 		if($field == 'primary_key') return isset($this->fields[static::getPrimaryKey()]);
-		return isset($this->fields[$field]) ? true : (isset($this->related[$field]) ? true : false);
+		return isset($this->fields[$field]) ? true : (isset($this->related[$field]) ? true : isset($this->$field));
 		
 	}
 	
@@ -408,7 +386,6 @@ abstract class Model extends Hookable {
 	 * @param string $field The field to unset.
 	 * @return void
 	 * @since 0.9
-	 * @throws InvalidFieldException Thrown when attempting to access or modify a non-existant field or relation.
 	 */
 	public function __unset($field) {
 		
@@ -435,6 +412,9 @@ abstract class Model extends Hookable {
 		if(!isset(static::$states[get_called_class()])) static::$states[get_called_class()] = new \StdClass;
 		else return;
 		
+		// Model should never be initialized.
+		if(get_called_class() === __CLASS__) return;
+		
 		// Store the model name (sans namespace) in the metadata.
 		static::p()->name = @end(explode('\\', static::getName()));
 		static::p()->tableName = static::$tableName ?: Inflector::tableize(static::p()->name);
@@ -442,6 +422,61 @@ abstract class Model extends Hookable {
 		static::p()->validate = static::$validate ?: array();
 		
 		static::normalizeRelations();
+		
+	}
+	
+	/**
+	 * Overloads method calling to allow pretty find functions.
+	 * 
+	 * Find functions format:
+	 * - findAll($options): Returns an array of results matching $options.  Same as default setting of {@link find()}.
+	 * - findFirst($options): Returns a single result matching $options.
+	 * - findAllByFieldName($fieldValue, $options): Returns an array of results with `field_name` = $fieldValue and matching $options.
+	 * - findFirstByFieldName($fieldValue, $options): Returns a single object result with `field_name` = $fieldValue and matching $options.
+	 * 
+	 * @param string $name The name of the method being called.
+	 * @param array $args An array of the arguments passed to the method.
+	 * @return mixed The result of the final called function.
+	 * @since 0.2
+	 * @see find()
+	 */
+	public static function __callStatic($name, $args) {
+		
+		$methodParts = explode('_', Inflector::underscore($name));
+		
+		$model = static::getName();
+		$error = function() use ($name, $model) {trigger_error("Call to undefined method " . $model . "::" . $name . "()", E_USER_ERROR);};
+		if(array_shift($methodParts) != 'find') $error();
+				
+		$options = array();
+		switch(array_shift($methodParts)) {
+			case 'first':
+				$options['type'] = 'first';
+				break;
+			case 'all':
+				$options['type'] = 'all';
+				break;
+			default:
+				$error();
+				break;
+		}
+		if(empty($methodParts)) {
+			if(!isset($args[0]) or !is_array($args[0])) $args[0] = array();
+			$args[0] = array_merge($args[0], $options);
+			return call_user_func_array(array(static::getName(), 'find'), $args);
+		}
+		
+		if(array_shift($methodParts) != 'by') $error();
+		if(empty($methodParts)) $error();
+		
+		$field = implode('_', $methodParts);
+		if(!in_array($field, static::getFields())) $error();
+		$options['conditions'] = array($field => array_shift($args));
+		
+		if(!isset($args[0]) or !is_array($args[0])) $args[0] = array();
+		$args[0] = array_merge_recursive($args[0], $options);
+		
+		return call_user_func_array(array(static::getName(), 'find'), $args);
 		
 	}
 	
@@ -503,61 +538,6 @@ abstract class Model extends Hookable {
 				}
 			}
 		}
-		
-	}
-	
-	/**
-	 * Overloads method calling to allow pretty find functions.
-	 * 
-	 * Find functions format:
-	 * - findAll($options): Returns an array of results matching $options.  Same as default setting of {@link find()}.
-	 * - findFirst($options): Returns a single result matching $options.
-	 * - findAllByFieldName($fieldValue, $options): Returns an array of results with `field_name` = $fieldValue and matching $options.
-	 * - findFirstByFieldName($fieldValue, $options): Returns a single object result with `field_name` = $fieldValue and matching $options.
-	 * 
-	 * @param string $name The name of the method being called.
-	 * @param array $args An array of the arguments passed to the method.
-	 * @return mixed The result of the final called function.
-	 * @since 0.2
-	 * @see find()
-	 */
-	public static function __callStatic($name, $args) {
-		
-		$methodParts = explode('_', Inflector::underscore($name));
-		
-		$model = static::getName();
-		$error = function() use ($name, $model) {trigger_error("Call to undefined method " . $model . "::" . $name . "()", E_USER_ERROR);};
-		if(array_shift($methodParts) != 'find') $error();
-				
-		$options = array();
-		switch(array_shift($methodParts)) {
-			case 'first':
-				$options['type'] = 'first';
-				break;
-			case 'all':
-				$options['type'] = 'all';
-				break;
-			default:
-				$error();
-				break;
-		}
-		if(empty($methodParts)) {
-			if(!isset($args[0]) or !is_array($args[0])) $args[0] = array();
-			$args[0] = array_merge($args[0], $options);
-			return call_user_func_array(array(static::getName(), 'find'), $args);
-		}
-		
-		if(array_shift($methodParts) != 'by') $error();
-		if(empty($methodParts)) $error();
-		
-		$field = implode('_', $methodParts);
-		if(!in_array($field, static::getFields())) $error();
-		$options['conditions'] = array($field => array_shift($args));
-		
-		if(!isset($args[0]) or !is_array($args[0])) $args[0] = array();
-		$args[0] = array_merge_recursive($args[0], $options);
-		
-		return call_user_func_array(array(static::getName(), 'find'), $args);
 		
 	}
 	
@@ -664,9 +644,9 @@ abstract class Model extends Hookable {
 		
 		if($options['cascade']) {
 			foreach(static::p()->belongsTo as $alias => $relation) {
-				if(!isset($this->$alias)) continue;
-				$return[] = $this->$alias->save($options);
-				$this->{$relation['foreignKey']} = $this->$alias->primary_key;
+				if(!isset($this->related[$alias]) or !$this->related[$alias]) continue;
+				$return[] = $this->related[$alias]->save($options);
+				$this->fields[$relation['foreignKey']] = $this->related[$alias]->primary_key;
 			}
 		}
 		
@@ -685,16 +665,16 @@ abstract class Model extends Hookable {
 		if($options['cascade']) {
 			foreach(static::p()->hasMany as $alias => $relation) {
 				$alias = Inflector::pluralize($alias);
-				if(!isset($this->$alias)) continue;
-				foreach($this->$alias as &$data) {
+				if(!isset($this->related[$alias])) continue;
+				foreach($this->related[$alias] as &$data) {
 					$data->{$relation['foreignKey']} = $this->primary_key;
 					$return[] = $data->save($options);
 				}
 			}
 			foreach(static::p()->hasOne as $alias => $relation) {
-				if(!isset($this->$alias)) continue;
-				$this->$alias->{$relation['foreignKey']} = $this->primary_key;
-				$return[] = $this->$alias->save($options);
+				if(!isset($this->related[$alias])) continue;
+				$this->related[$alias]->{$relation['foreignKey']} = $this->primary_key;
+				$return[] = $this->related[$alias]->save($options);
 			}
 		}
 		
