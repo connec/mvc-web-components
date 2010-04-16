@@ -61,10 +61,15 @@ abstract class Hookable extends ExtensibleStatic {
 		$return = array();
 		if(isset(static::p()->hooks[$name]) and !empty(static::p()->hooks[$name])) {
 			foreach(static::p()->hooks[$name] as $callback) {
-				if($callback[0] == '$this' and is_object($_this)) $callback[0] =& $_this;
+				if(is_array($callback) and $callback[0] == '$this' and is_object($_this)) $callback[0] =& $_this;
 				$return[] = call_user_func_array($callback, $args);
 			}
 		}elseif($required) throw new MissingHookException($name);
+		
+		// Call any parent hooks as well.
+		$parent = get_parent_class(get_called_class());
+		if(is_subclass_of($parent, __CLASS__))
+			$return = array_merge($return, $parent::runHook($name, $_this, $args, $required));
 		
 		return $return;
 		
