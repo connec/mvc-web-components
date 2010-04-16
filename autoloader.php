@@ -23,7 +23,7 @@ require_once dirname(__FILE__) . DIRECTORY_SEPARATOR . 'mvc_exception.php';
  * 
  * Also effectively overloads PHP errors with exceptions for missing classes.
  * 
- * @version 1.1
+ * @version 1.2
  */
 class Autoloader {
 	
@@ -40,12 +40,21 @@ class Autoloader {
 	/**
 	 * Sets if Autoloader is 'relaxed'.
 	 * 
-	 * When relaxed, autoload will not throw an exception.  Resets after each autoload.
+	 * When relaxed, autoload will not throw an exception for the next autoloaded class.  
+	 * Missing dependencies for that class will still raise exceptions.
 	 * 
 	 * @var bool
 	 * @since 1.1
 	 */
 	protected static $relaxed = false;
+	
+	/**
+	 * An array of included files.
+	 * 
+	 * @var array
+	 * @since 1.2
+	 */
+	protected static $files = array();
 	
 	/**
 	 * Sets the relaxed flag to true.
@@ -93,24 +102,31 @@ class Autoloader {
 	 */
 	public static function autoload($className) {
 		
+		static $relaxed = false;
+		if(static::$relaxed) {
+			$relaxed = $className;
+			static::$relaxed = false;
+		}
+		
 		$fullName = $className;
 		$className = @end(explode('\\', $className));
 		$namespace = str_replace("\\$className", '', $fullName);
 		$file = Inflector::underscore($className) . '.php';
 		foreach(self::$directories as $dir) {
 			$search = "$dir$file";
-			if(file_exists($search)) {
+			if(file_exists($search) and !in_array($search, static::$files)) {
 				require_once $search;
+				static::$files[] = $search;
 				if(class_exists($fullName, false)) {
-					static::$relaxed = false;
+					if($relaxed == $fullName) $relaxed = false;
 					return;
 				}
 			}
 		}
 		
 		// If we reach here we haven't found the class, return false.
-		if(static::$relaxed) {
-			static::$relaxed = false;
+		if($relaxed == $fullName) {
+			$relaxed = false;
 			return false;
 		}
 		throw new MissingClassException($fullName);
