@@ -140,6 +140,9 @@ class TestSuite {
 		
 		echo '<head><title>' . get_called_class() . '</title></head>';
 		
+		// Count the total time.
+		$total = microtime(true);
+		
 		// Find our tests.
 		self::findTests();
 		
@@ -164,7 +167,10 @@ class TestSuite {
 				static::runHook('preTest', true);
 				
 				// And the test
+				$start = microtime(true);
 				$test->run();
+				
+				echo 'Took ' . number_format(microtime(true) - $start, 4) . ' seconds.<br/><br/>';
 				
 				// And the postTest hook...
 				static::runHook('postTest', true);
@@ -182,6 +188,8 @@ class TestSuite {
 		
 		// Do any final stuff.
 		static::runHook('postTesting');
+		
+		echo '<p>Total time: ' . number_format(microtime(true) - $total, 4) . ' seconds.</p>';
 		
 	}
 	
