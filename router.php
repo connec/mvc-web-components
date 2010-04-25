@@ -91,26 +91,14 @@ class Router {
 		if(substr($urlPattern, -1) != '/') $urlPattern .= '/';
 		
 		// Check $urlPattern uses valid 'connection syntax'.
-		$validUrlPattern = '#^(?:/[a-z0-9_*:]+)*/$#i';
+		static $validUrlPattern = '|^(?:/[a-z0-9_*:]+)*/$|i';
 		if(!preg_match($validUrlPattern, $urlPattern)) throw new InvalidUrlPatternException($urlPattern);
 		
 		// Build the regex pattern from the url pattern.
-		// At it's simplest, the url pattern is the regex... with wildcard '*' replaced with '.*'.
 		$regex = '|^' . str_replace('*', '(?<other>.*)', $urlPattern) . '$|i';
-		if(strpos($urlPattern, ':') !== false) {
+		if(strpos($urlPattern, ':') !== false)
 			// We have variables...
-			$find = '|:([a-z]+)|i';
-			$replace = '(?<$1>[^/]+)';
-			$regex = preg_replace($find, $replace, $regex);
-		}
-		
-		// Collect any parameters without keys under the 'other' key.
-		if(!isset($parameters['other'])) $parameters['other'] = array();
-		foreach($parameters as $key => $val) {
-			if(is_string($key)) continue;
-			$parameters['other'][] = $val;
-			unset($parameters[$key]);
-		}
+			$regex = preg_replace('|:([a-z]+)|i', '(?<$1>[^/]+)', $regex);
 		
 		// Register it.
 		Router::$connections[] = array('urlPattern' => $urlPattern, 'regex' => $regex, 'parameters' => $parameters);
@@ -122,74 +110,79 @@ class Router {
 	 *
 	 * Searches registered connections for a URL pattern matching $url and returns the associated parameters.
 	 *
-	 * @param string $url The URL to route.
-	 * @param bool   $error When set to true, an exception if thrown when no matching connection is found.
+	 * @param string $url    The URL to route.
+	 * @param bool   $error  When set to true, an exception if thrown when no matching connection is found.
+	 * @param array  $ignore An array of paremeters to be ignored.  Same format as $connection.
 	 * @return mixed False if no connections matched or the connections parameters if a match is found.
 	 * @since 1.0
 	 */
-	public static function route($url, $error = true) {
+	public static function route($url, $error = true, $ignore = array()) {
 		
+		// Reset the current connection.
 		static::$connection = null;
 		
-		// Get the query string off if it's there
+		// Find the query string.
 		if(($start = strpos($url, '?')) !== false) {
 			$queryStr = substr($url, $start + 1);
 			$url = substr($url, 0, $start);
-		}else
+		} else
 			$queryStr = isset($_SERVER['QUERY_STRING']) ? $_SERVER['QUERY_STRING'] : '';
 		
-		// Append the trailing '/' if it's missing.
+		// Append a trailing slash if there isn't one.
 		if(substr($url, -1) != '/') $url .= '/';
 		
-		// Checks each rule in order and returns the parameters of the first matched rule.
-		foreach(Router::$connections as $connection) {
-			$matches = array();
+		// Find a matching connection.
+		foreach(static::$connections as $connection) {
+			if(in_array($connection, $ignore)) continue;
+			
+			// Check for a match.
 			if(preg_match($connection['regex'], $url, $matches)) {
-				static::$connection = $connection;
+				static::$connection = $connection; // Store the matching connection for reference.
+				array_shift($matches); // Ignore the total match.
 				
-				array_shift($matches); // Ignore the 'overall' match
+				// Append any wilcard matches / query string variables.
+				if(isset($matches['other'])) {
+					$connection['parameters'] =
+						array_merge($connection['parameters'], explode('/', $matches['other']));
+					unset($matches['other']);
+				}
 				
-				// If parameters is just 'other' (required), infer the rest from any variables.
+				// Sort the parameters.
+				$other = array();
+				foreach($connection['parameters'] as $key => &$value) {
+					foreach(array_keys($matches) as $var) {
+						if(is_int($var)) continue;
+						if(strpos($value, ":$var") !== false) {
+							$value = str_replace(":$var", $matches[$var], $value);
+							break;
+						}
+					}
+					if(!is_string($key)) {
+						$other[] = $value;
+						unset($connection['parameters'][$key]);
+					}
+				}
+				$connection['parameters']['other'] = $other;
+				
+				// Add any query string variables to 'other'
+				parse_str($queryStr, $other);
+				$connection['parameters']['other'] =
+					array_merge($connection['parameters']['other'], $other);
+				
+				// Infer the paremeters from the matches if no paremeters are given.
 				if(count($connection['parameters']) === 1) {
 					foreach($matches as $var => $val) {
-						if(is_int($var) or $var == 'other') continue;
+						if(is_int($var)) continue;
 						$connection['parameters'][$var] = $val;
 					}
 				}
 				
-				// Check if any parameters use connection variables.
-				foreach($connection['parameters'] as &$parameter) {
-					if(is_array($parameter) or strpos($parameter, ':') === false) continue;
-					
-					// Replace the :connectionVariable with the corresponding value in $matches.
-					$variable = substr($parameter, strpos($parameter, ':') + 1);
-					$parameter = str_replace(":$variable", $matches[$variable], $parameter);
-				}
-				
-				// Process wildcard parameters if they exist.
-				if(isset($matches['other'])) {
-					foreach(explode('/', $matches['other']) as $other) {
-						if(strpos($other, ':') === false) $connection['parameters']['other'][] = $other;
-						else {
-							list($var, $val) = explode(':', $other);
-							$connection['parameters']['other'][$var] = $val;
-						}
-					}
-				}
-				
-				// Append anything from the query string.
-				$array = array();
-				parse_str($queryStr, $array);
-				$connection['parameters']['other'] = array_merge($connection['parameters']['other'], $array);
-				
-				// Return the parameters.
 				return $connection['parameters'];
 			}
 		}
 		
-		// No match was found, throw an exception or return false.
 		if($error) throw new NoConnectionException($url);
-		return false;
+		else return false;
 		
 	}
 	

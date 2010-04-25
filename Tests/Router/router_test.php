@@ -57,11 +57,6 @@ class RouterTest extends UnitTest {
 		$this->assertStrict($params['page'], 'home');
 		$this->assertStrict($params['other'], array('a','b','c'));
 		
-		Router::connect('/*', array('page' => 'home'));
-		$params = Router::route('/a:1/b:2/c:3');
-		$this->assertStrict($params['page'], 'home');
-		$this->assertStrict($params['other'], array('a' => '1', 'b' => '2', 'c' => '3'));
-		
 	}
 	
 	public function TestMultipleAssignment() {
