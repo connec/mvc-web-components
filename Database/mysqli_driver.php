@@ -99,7 +99,7 @@ Class MysqliDriver implements DatabaseDriverInterface {
 		}
 		
 		$return = $this->result->fetch_assoc();
-		if(!empty($return)) foreach($return as &$value) if(is_numeric($value)) $value = (int)$value;
+		if(!empty($return)) foreach($return as &$value) if(is_numeric($value)) $value = (float)$value;
 		return $return;
 		
 	}
@@ -120,7 +120,7 @@ Class MysqliDriver implements DatabaseDriverInterface {
 		}
 		
 		$return = (empty($params) ? $this->result->fetch_object($className) : $this->result->fetch_object($className, $params));
-		if(!empty($return)) foreach($return as &$value) if(is_numeric($value)) $value = (int)$value;
+		if(!empty($return)) foreach($return as &$value) if(is_numeric($value)) $value = (float)$value;
 		return $return;
 		
 	}
