@@ -38,35 +38,12 @@ class Autoloader {
 	public static $directories = array();
 	
 	/**
-	 * Sets if Autoloader is 'relaxed'.
-	 * 
-	 * When relaxed, autoload will not throw an exception for the next autoloaded class.  
-	 * Missing dependencies for that class will still raise exceptions.
-	 * 
-	 * @var bool
-	 * @since 1.1
-	 */
-	protected static $relaxed = false;
-	
-	/**
 	 * An array of included files.
 	 * 
 	 * @var array
 	 * @since 1.2
 	 */
 	protected static $files = array();
-	
-	/**
-	 * Sets the relaxed flag to true.
-	 * 
-	 * @return void
-	 * @since 1.1
-	 */
-	public static function relax() {
-		
-		static::$relaxed = true;
-		
-	}
 	
 	/**
 	 * Adds the given directory(s) to the search list.
@@ -102,12 +79,6 @@ class Autoloader {
 	 */
 	public static function autoload($className) {
 		
-		static $relaxed = false;
-		if(static::$relaxed) {
-			$relaxed = $className;
-			static::$relaxed = false;
-		}
-		
 		$fullName = $className;
 		$className = @end(explode('\\', $className));
 		$namespace = str_replace("\\$className", '', $fullName);
@@ -117,19 +88,13 @@ class Autoloader {
 			if(file_exists($search) and !in_array($search, static::$files)) {
 				require_once $search;
 				static::$files[] = $search;
-				if(class_exists($fullName, false)) {
-					if($relaxed == $fullName) $relaxed = false;
-					return;
-				}
+				if(class_exists($fullName, false))
+					return true;
 			}
 		}
 		
 		// If we reach here we haven't found the class, return false.
-		if($relaxed == $fullName) {
-			$relaxed = false;
-			return false;
-		}
-		throw new MissingClassException($fullName);
+		return false;
 		
 	}
 	

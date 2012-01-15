@@ -26,14 +26,12 @@ abstract class Hookable extends ExtensibleStatic {
 	 */
 	public static function addHook($name, $callback) {
 		
-		Autoloader::relax(); // Don't want exceptions from missing classes.
 		if(!is_callable($callback)) {
 			if($callback[0] == '$this') {
 				$class = get_called_class();
-				Autoloader::relax(); // And again.
 				if(!is_callable(array($class, $callback[1])))
 					throw new BadCallbackException(array($class, $callback[1]));
-			}else throw new BadCallbackException($callback);
+			} else throw new BadCallbackException($callback);
 		}
 		
 		static::hookInit();

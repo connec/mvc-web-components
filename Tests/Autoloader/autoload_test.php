@@ -38,17 +38,6 @@ class AutoloadTest extends UnitTest {
 		
 		$this->assertFalse(\MVCWebComponents\Register::check('missing'));
 		
-		$a = false;
-		try {
-			class_exists('NoClass');
-		}catch(MissingClassException $e) {
-			$a = true;
-		}
-		$this->assertTrue($a);
-		
-		Autoloader::relax();
-		class_exists('NoClass'); // despite missing try/catch, should not throw exception
-		
 	}
 	
 }

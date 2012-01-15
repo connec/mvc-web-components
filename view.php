@@ -326,17 +326,15 @@ class View extends Hookable {
 		
 		// Find the class name using assumed conventions.
 		$class = Inflector::camelize("{$helper}_helper");
-		Autoloader::relax();
 		if(!class_exists($class)) {
 			// Check the namespaces.
 			foreach(static::$helperNamespaces as $namespace) {
-				Autoloader::relax();
 				if(!class_exists($namespace . $class)) continue;
 				$class = $namespace . $class;
 				break;
 			}
-			Autoloader::relax();
-			if(!class_exists($class)) throw new MissingHelperException($class);
+			if(!class_exists($class))
+			  throw new MissingHelperException($class);
 		}
 		
 		// Store it for easy retrieval.
